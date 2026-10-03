@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TVPC Golf Sticks</title>
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TVPC Golf">
+    <meta name="theme-color" content="#020617">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet: course map (satellite tiles from Esri, street tiles from OSM; no API key needed) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+
+        .no-select {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .mode-option-input:checked + .mode-option-card {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            color: #34d399 !important;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-pop {
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .leaflet-container {
+            background: #020617;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .hole-pin {
+            background: rgba(0, 0, 0, 0.55);
+            border: 1.5px solid rgba(255, 255, 255, 0.8);
+            border-radius: 9999px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .me-dot {
+            background: #38bdf8;
+            border: 3px solid #fff;
+            border-radius: 9999px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col no-select">
+
+    <div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col bg-slate-950 shadow-2xl relative pb-6">
+
+        <!-- HEADER -->
+        <header class="p-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
+            <div class="flex items-center space-x-2">
+                <span class="text-xl">⛳</span>
+                <div>
+                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC Golf Sticks</h1>
+                    <p class="text-[10px] text-slate-400" id="headerCourseSub">No course selected</p>
+                </div>
+            </div>
+            <div class="flex gap-1.5 items-center">
+                <button id="btnOpenCourse" onclick="openCourseModal()" class="text-[11px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
+                    ⛳ Course
+                </button>
+                <button id="btnHistory" onclick="toggleHistoryModal(true)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 font-semibold">
+                    📜 History
+                </button>
+                <button id="btnMap" onclick="openMapModal()" class="hidden text-[11px] bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 px-2.5 py-1 rounded-lg border border-sky-500/30 font-semibold">
+                    🗺 Map
+                </button>
+                <button id="btnViewScore" onclick="toggleScoreModal(true)" class="hidden text-[11px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
+                    📊 Leaderboard
+                </button>
+                <button id="btnReset" onclick="confirmReset()" class="hidden text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">
+                    New Game
+                </button>
+            </div>
+        </header>
+
+        <!-- SETUP SCREEN -->
+        <section id="setupScreen" class="p-4 flex-1 flex flex-col justify-between space-y-4">
+            <div class="space-y-4">
+                <div id="resumeGameCard" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xs font-bold text-emerald-400">In-Progress Game Found</h3>
+                        <p class="text-[10px] text-slate-400" id="resumeGameSub">Tap to continue active round</p>
+                    </div>
+                    <button onclick="resumeActiveGame()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md">
+                        Resume ▶️
+                    </button>
+                </div>
+
+                <!-- 선택된 코스 정보 표시 카드 -->
+                <div id="setupCourseBanner" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase">Selected Course & Tee</span>
+                        <div id="setupCourseText" class="text-xs font-bold text-emerald-400 mt-0.5">No course selected (Tap ⛳ Course above)</div>
+                    </div>
+                    <button onclick="openCourseModal()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 font-semibold">
+                        Change
+                    </button>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Game Title</label>
+                    <input type="text" id="gameTitleInput" value="TVPC Golf Sticks" onfocus="this.select()" placeholder="Enter Game Title" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-[11px] font-semibold uppercase text-slate-400">Players (2 ~ 4) & Handicaps</label>
+                    </div>
+                    <div id="playerInputs" class="space-y-2"></div>
+                    <button id="btnAddPlayer" onclick="addPlayerInput()" class="mt-2 w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 hover:text-white hover:border-slate-500 text-xs font-medium transition flex items-center justify-center gap-1">
+                        <span>+</span> Add Player
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/80 p-3 border border-slate-800 rounded-xl space-y-1.5">
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400">Carryover Rule (Tie Option)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="gameMode" value="add" class="mode-option-input hidden">
+                            <div class="mode-option-card w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center transition">
+                                <div class="text-[11px] font-bold mb-0.5">➕ Cumulative</div>
+                                <div class="text-[9px] text-slate-400 leading-tight">Add previous tied hole points</div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="gameMode" value="multiply" checked class="mode-option-input hidden">
+                            <div class="mode-option-card w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center transition">
+                                <div class="text-[11px] font-bold mb-0.5">✖️ Double Always</div>
+                                <div class="text-[9px] text-slate-400 leading-tight">Multiply x2 for each tied hole</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Base Double Holes (🔥 2x)</label>
+                    <div class="grid grid-cols-6 gap-1.5" id="doubleHolesGrid"></div>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 text-base transition">
+                Start New Game
+            </button>
+        </section>
+
+        <!-- GAMEPLAY SCREEN -->
+        <section id="gameScreen" class="hidden flex-1 flex flex-col p-3 space-y-3">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-center relative overflow-hidden">
+                <div class="flex justify-between items-center text-xs text-slate-400 mb-1 font-semibold">
+                    <button onclick="changeHole(-1)" class="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 hover:text-white">❮ Prev</button>
+                    <span id="holeDisplay" class="text-emerald-400 text-sm font-bold">HOLE 1 / 18</span>
+                    <button onclick="changeHole(1)" class="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 hover:text-white">Next ❯</button>
+                </div>
+                <div id="courseHoleInfoBar" class="my-1.5 py-1 px-2 bg-slate-950 border border-slate-800 rounded-lg flex justify-center items-center gap-4 text-xs font-bold">
+                    <span id="displayPar" class="text-slate-300">Par: —</span>
+                    <span class="text-slate-600">|</span>
+                    <span id="displayHcpIndex" class="text-amber-400">HCP Index: —</span>
+                    <span id="displayYardsSep" class="hidden text-slate-600">|</span>
+                    <span id="displayYards" class="hidden text-sky-400"></span>
+                </div>
+                <div id="multiplierBanner" class="mt-1 py-1 px-3 rounded-lg font-extrabold text-xs flex items-center justify-center gap-2"></div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase">Scratch Scores & Winners</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="executeTeamDraw()" class="text-[10px] text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-1 rounded-lg font-bold transition flex items-center gap-1 active:scale-95">
+                            🎲 Draw Teams
+                        </button>
+                        <button onclick="setTieHole()" class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg font-semibold hover:bg-slate-700 active:scale-95 transition">
+                            🤝 Tie
+                        </button>
+                    </div>
+                </div>
+
+                <div id="holeScoreInputs" class="space-y-1.5"></div>
+                <div id="inlineTeamResult" class="hidden mt-2 p-2 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1 animate-pop text-xs"></div>
+
+                <div class="mt-3 pt-2 border-t border-slate-800">
+                    <button onclick="changeHole(1)" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-500/10 text-sm transition">
+                        Confirm & Next Hole ➔
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <h3 class="text-[11px] font-bold uppercase text-slate-400 mb-2 flex justify-between items-center">
+                    <span>📊 Live Total Points</span>
+                    <span id="completedHolesCount" class="text-emerald-400">0 / 18 Played</span>
+                </h3>
+                <div id="liveTotalsList" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
+            <button onclick="openMapModal()" class="w-full py-2 text-xs font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 rounded-xl hover:bg-sky-500/20">
+                🗺 Course Map & Distance to Green
+            </button>
+
+            <button onclick="toggleScoreModal(true)" class="w-full py-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20">
+                View Full Score Sheet & Leaderboard 📋
+            </button>
+        </section>
+
+        <!-- COURSE MAP MODAL -->
+        <div id="mapModal" class="hidden fixed inset-0 bg-slate-950 z-50 flex flex-col">
+            <div class="max-w-md mx-auto w-full h-full flex flex-col relative">
+                <div class="p-2 bg-slate-900 border-b border-slate-800 flex items-center gap-2 flex-none">
+                    <button onclick="closeMapModal()" class="text-slate-300 text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">✕</button>
+                    <button onclick="mapChangeHole(-1)" class="text-slate-300 text-sm bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">❮</button>
+                    <div class="flex-1 text-center leading-tight">
+                        <div id="mapHoleTitle" class="text-sm font-black text-emerald-400">HOLE 1</div>
+                        <div id="mapHoleSub" class="text-[10px] text-slate-400">Par 4 · HCP 1</div>
+                    </div>
+                    <button onclick="mapChangeHole(1)" class="text-slate-300 text-sm bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">❯</button>
+                    <button id="mapLayerBtn" onclick="toggleMapLayer()" class="text-[11px] text-sky-400 bg-sky-500/10 border border-sky-500/30 px-2 py-1 rounded-lg font-semibold">Street</button>
+                </div>
+
+                <div id="courseMap" class="flex-1"></div>
+
+                <div class="absolute left-2 right-2 bottom-2 z-[1000] bg-slate-900/95 border border-slate-800 rounded-2xl p-3 space-y-1.5" style="margin-bottom: env(safe-area-inset-bottom, 0px);">
+                    <div class="flex text-center">
+                        <div class="flex-1">
+                            <div class="text-[10px] text-slate-400 font-semibold">TO GREEN</div>
+                            <div id="distGreen" class="text-2xl font-black text-emerald-400">—</div>
+                            <div id="distGreenM" class="text-[10px] text-slate-500"></div>
+                        </div>
+                        <div id="targetCols" class="hidden flex-[2] flex">
+                            <div class="flex-1">
+                                <div class="text-[10px] text-slate-400 font-semibold">TO TARGET</div>
+                                <div id="distTarget" class="text-2xl font-black text-amber-400">—</div>
+                                <div id="distTargetM" class="text-[10px] text-slate-500"></div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-[10px] text-slate-400 font-semibold">TARGET → GREEN</div>
+                                <div id="distTG" class="text-2xl font-black text-white">—</div>
+                                <div id="distTGM" class="text-[10px] text-slate-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mapHint" class="text-[10px] text-center text-slate-400"></div>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button onclick="mapCenterMe()" class="py-1.5 text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-lg">📍 Me</button>
+                        <button onclick="mapCenterGreen()" class="py-1.5 text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-lg">⛳ Green</button>
+                        <button id="mapThirdBtn" onclick="mapThirdAction()" class="py-1.5 text-[11px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg">Unpin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LARGE HOLE TRANSITION OVERLAY -->
+        <div id="holeTransitionOverlay" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 text-center">
+            <div class="animate-pop bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-8 w-full max-w-xs shadow-2xl shadow-emerald-500/20 space-y-4">
+                <div class="text-slate-400 text-sm font-bold uppercase tracking-wider">Moving To</div>
+                <div id="transitionHoleText" class="text-5xl font-black text-emerald-400 tracking-tight">HOLE 2</div>
+                <div id="transitionHoleInfo" class="text-xs text-slate-300 font-semibold">Par 4 | HCP Index 5</div>
+                <div id="transitionMultText" class="text-base font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl py-2 px-3">
+                    REGULAR HOLE (1pt)
+                </div>
+            </div>
+        </div>
+
+        <!-- COURSE FINDER MODAL -->
+        <div id="courseModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-center items-center">
+            <div class="space-y-4 max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col max-h-[85vh] shadow-2xl">
+
+                <!-- 1. 헤더 (고정) -->
+                <div class="flex justify-between items-center pb-1 flex-none">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>⛳</span> Select Golf Course & Tee
+                    </h2>
+                    <button onclick="closeCourseModal()" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                        ✕ Close
+                    </button>
+                </div>
+
+                <!-- 2. 스크롤 가능 영역 -->
+                <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="courseSearchInput" placeholder="Enter course name (e.g. Pebble Beach)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                            <button onclick="searchGolfCourses()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-bold">Search</button>
+                        </div>
+
+                        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+                            <span class="text-[11px] font-semibold text-slate-400">Search Radius (Mile)</span>
+                            <select id="searchRadiusSelect" class="bg-slate-950 text-white text-xs border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500">
+                                <option value="5" selected>5 Mile</option>
+                                <option value="10">10 Mile</option>
+                                <option value="15">15 Mile</option>
+                                <option value="20">20 Mile</option>
+                            </select>
+                        </div>
+
+                        <button onclick="searchNearbyCourses()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-emerald-400">
+                            📍 Use My GPS Location (Nearby)
+                        </button>
+
+                        <!-- 검색 결과 리스트 -->
+                        <div id="courseSearchResults" class="space-y-2 pb-2"></div>
+                    </div>
+
+                    <!-- Tee Box 정보 및 상세 미리보기 테이블 -->
+                    <div id="teeSelectContainer" class="hidden bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
+                        <h3 id="selectedCourseTitle" class="text-xs font-bold text-emerald-400"></h3>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1">Select Tee Box</label>
+                            <select id="teeSelectDropdown" onchange="renderTeePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"></select>
+                        </div>
+
+                        <div id="teePreviewBox" class="bg-slate-900 border border-slate-800 rounded-lg p-2.5 space-y-2 text-xs">
+                            <div class="flex justify-between items-center text-[11px] text-slate-400 font-bold border-b border-slate-800 pb-1">
+                                <span>TEE DETAILS</span>
+                                <span id="previewRatingInfo" class="text-amber-400">Rating: - / Slope: -</span>
+                            </div>
+                            <div id="previewHoleTable" class="overflow-x-auto"></div>
+                        </div>
+
+                        <button onclick="applySelectedCourse()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20">
+                            Apply Course & Tee Data ➔
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. 하단 Cancel 버튼 (고정) -->
+                <div class="pt-2 flex-none">
+                    <button onclick="closeCourseModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-xs">
+                        Cancel / Skip
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SCOREBOARD MODAL -->
+        <div id="scoreModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-between overflow-y-auto">
+            <div class="space-y-4 max-w-md mx-auto w-full pb-6">
+                <div class="flex justify-between items-center pt-2">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📊</span> Score Sheet & Standings
+                    </h2>
+                    <button onclick="toggleScoreModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                        ✕ Close
+                    </button>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">Live Ranking</h4>
+                    <div id="modalStandings" class="grid grid-cols-2 gap-2 text-xs"></div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto">
+                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">18-Hole Matrix Table</h4>
+                    <table class="w-full text-xs text-left border-collapse min-w-[340px]">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400" id="matrixHeaderRow">
+                                <th class="py-1.5 px-1">Hole</th>
+                                <th class="py-1.5 px-1 text-center">Par/HDCP</th>
+                                <th class="py-1.5 px-1 text-center">Mult</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody" class="divide-y divide-slate-800/50"></tbody>
+                        <tfoot id="matrixTableFooter" class="border-t-2 border-slate-700 font-bold text-white"></tfoot>
+                    </table>
+                </div>
+
+                <button onclick="toggleScoreModal(false)" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm">
+                    Back to Hole Game ➔
+                </button>
+            </div>
+        </div>
+
+        <!-- HISTORY MODAL -->
+        <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-between overflow-y-auto">
+            <div class="space-y-4 max-w-md mx-auto w-full pb-6">
+                <div class="flex justify-between items-center pt-2">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>📜</span> Match History
+                    </h2>
+                    <button onclick="toggleHistoryModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                        ✕ Close
+                    </button>
+                </div>
+
+                <div id="historyList" class="space-y-3"></div>
+
+                <div class="flex gap-2 pt-2">
+                    <button onclick="clearAllHistory()" class="w-1/3 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold py-2.5 rounded-xl transition">
+                        Clear All
+                    </button>
+                    <button onclick="toggleHistoryModal(false)" class="w-2/3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <section id="resultScreen" class="hidden p-4 flex-1 flex flex-col space-y-4">
+            <div class="text-center space-y-1">
+                <div class="text-3xl">🏆</div>
+                <h2 class="text-xl font-black text-white" id="resultGameTitle">Final Standings</h2>
+                <p class="text-[11px] text-slate-400">Official Game Results</p>
+            </div>
+
+            <div id="finalLeaderboard" class="space-y-2.5"></div>
+
+            <div class="pt-2">
+                <button onclick="confirmReset()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm">
+                    Start New Game
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        let state = {
+            title: "TVPC Golf Sticks",
+            courseName: "",
+            courseId: "",
+            courseLat: null,
+            courseLng: null,
+            courseHoles: {},
+            players: ["Player 1", "Player 2", "Player 3", "Player 4"],
+            handicaps: [0, 0, 0, 0],
+            holeSticks: {},
+            mode: "multiply",
+            baseDoubleHoles: [17, 18],
+            currentHole: 1,
+            scratchScores: Array.from({ length: 19 }, () => [0, 0, 0, 0]),
+            scores: {},
+            ties: {}
+        };
+
+        const DEFAULT_BASE_DOUBLES = [17, 18];
+        let activeCourseData = null;
+        let userCoords = null;
+        let lastSearchResults = []; // 최근 검색 결과 저장용
+
+        window.onload = () => {
+            renderSetupPlayers();
+            renderDoubleHolesGrid();
+            checkActiveGameExists();
+        };
+
+        function escapeHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        function openCourseModal() {
+            document.getElementById('courseModal').classList.remove('hidden');
+        }
+
+        function closeCourseModal() {
+            document.getElementById('courseModal').classList.add('hidden');
+        }
+
+        function calculateDistanceMiles(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+            const R = 3958.8;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function renderCourseSearchResults(courses) {
+            const container = document.getElementById('courseSearchResults');
+            container.innerHTML = '';
+            lastSearchResults = courses;
+
+            if (!courses || courses.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 text-center py-2">No courses found.</div>`;
+                return;
+            }
+
+            courses.forEach(course => {
+                const lat = course.latitude || course.lat;
+                const lng = course.longitude || course.lng || course.lon;
+                let dist = course.distance_mi;
+                if (userCoords && lat && lng) {
+                    dist = calculateDistanceMiles(userCoords.lat, userCoords.lng, lat, lng);
+                }
+
+                const distText = dist !== undefined && dist !== null
+                    ? `<span class="text-emerald-400 font-semibold ml-2 shrink-0">${Number(dist).toFixed(1)} mi · ${(dist * 1.609).toFixed(1)} km</span>`
+                    : '';
+
+                const cId = course.id || course.course_id;
+                const cName = escapeHtml(course.course_name || course.name);
+                const cLoc = escapeHtml([course.city, course.state, course.country_iso].filter(Boolean).join(', '));
+
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs transition';
+                btn.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-white">${cName}</span>
+                            ${distText}
+                        </div>
+                        <div class="text-[10px] text-slate-400">${cLoc}</div>
+                    `;
+                btn.onclick = () => loadCourseDetails(cId, cName, cLoc);
+                container.appendChild(btn);
+            });
+        }
+
+        async function searchGolfCourses() {
+            const query = document.getElementById('courseSearchInput').value.trim();
+            if (!query) return alert("Please enter a course name.");
+            const container = document.getElementById('courseSearchResults');
+            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">Searching...</div>`;
+
+            try {
+                let url = `https://api.opengolfapi.org/api/v1/courses/search?q=${encodeURIComponent(query)}`;
+                if (userCoords) {
+                    url += `&lat=${userCoords.lat}&lng=${userCoords.lng}`;
+                }
+                const res = await fetch(url);
+                const data = await res.json();
+                let courses = data.courses || data.data || [];
+
+                renderCourseSearchResults(courses);
+            } catch (e) {
+                container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">Failed to search courses.</div>`;
+            }
+        }
+
+        async function searchNearbyCourses() {
+            if (!navigator.geolocation) return alert("Geolocation is not supported by your browser.");
+            const container = document.getElementById('courseSearchResults');
+            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">Finding nearby courses via GPS...</div>`;
+
+            const radiusMiles = parseFloat(document.getElementById('searchRadiusSelect').value) || 5;
+
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                userCoords = { lat, lng };
+
+                try {
+                    const res = await fetch(`https://api.opengolfapi.org/api/v1/courses/search?lat=${lat}&lng=${lng}&radius=${radiusMiles}`);
+                    const data = await res.json();
+                    let courses = data.courses || data.data || [];
+
+                    courses = courses.filter(c => {
+                        const cLat = c.latitude || c.lat;
+                        const cLng = c.longitude || c.lng || c.lon;
+                        const dist = calculateDistanceMiles(lat, lng, cLat, cLng);
+                        return dist === null || dist <= radiusMiles;
+                    });
+
+                    renderCourseSearchResults(courses);
+                } catch (e) {
+                    container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">Failed to fetch GPS courses.</div>`;
+                }
+            }, () => {
+                alert("GPS permission denied or failed.");
+                container.innerHTML = '';
+            });
+        }
+
+        async function loadCourseDetails(courseId, cName = "", cLoc = "") {
+            const container = document.getElementById('courseSearchResults');
+
+            // 선택한 1개 코스만 리스트에 축소 표시 + Change 버튼 추가
+            container.innerHTML = `
+                    <div class="bg-emerald-950/50 border border-emerald-500/50 rounded-xl p-2.5 flex justify-between items-center">
+                        <div>
+                            <div class="text-xs font-bold text-emerald-400">⛳ ${cName || 'Selected Course'}</div>
+                            ${cLoc ? `<div class="text-[10px] text-slate-400">${cLoc}</div>` : ''}
+                        </div>
+                        <button onclick="restoreCourseList()" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
+                            Change 🔄
+                        </button>
+                    </div>
+                `;
+
+            try {
+                const [resDetail, resHoles] = await Promise.all([
+                    fetch(`https://api.opengolfapi.org/api/v1/courses/${courseId}`),
+                    fetch(`https://api.opengolfapi.org/api/v1/courses/${courseId}/holes`)
+                ]);
+
+                const detailData = await resDetail.json();
+                const holesData = await resHoles.json();
+
+                activeCourseData = detailData.course || detailData;
+                activeCourseData.holesList = holesData.holes || activeCourseData.holes_data || [];
+
+                document.getElementById('selectedCourseTitle').innerText = activeCourseData.course_name || activeCourseData.name;
+                const select = document.getElementById('teeSelectDropdown');
+                select.innerHTML = '';
+
+                const tees = activeCourseData.tees || activeCourseData.tee_sets || [];
+                if (tees.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = 0;
+                    opt.text = "Standard Tee Box";
+                    select.appendChild(opt);
+                } else {
+                    tees.forEach((tee, idx) => {
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        const teeName = tee.tee_name || tee.name || `Tee ${idx + 1}`;
+                        const par = tee.par || activeCourseData.par || 72;
+                        opt.text = `${teeName} (Par ${par})`;
+                        select.appendChild(opt);
+                    });
+                }
+
+                document.getElementById('teeSelectContainer').classList.remove('hidden');
+                renderTeePreview();
+            } catch (e) {
+                alert("Failed to load tee and scorecard details.");
+            }
+        }
+
+        function restoreCourseList() {
+            document.getElementById('teeSelectContainer').classList.add('hidden');
+            renderCourseSearchResults(lastSearchResults);
+        }
+
+        function renderTeePreview() {
+            if (!activeCourseData) return;
+            const teeIndex = document.getElementById('teeSelectDropdown').value;
+            const tees = activeCourseData.tees || activeCourseData.tee_sets || [];
+            const selectedTee = tees[teeIndex] || (tees.length > 0 ? tees[0] : null);
+
+            const rating = selectedTee ? (selectedTee.course_rating || selectedTee.rating || 'N/A') : 'N/A';
+            const slope = selectedTee ? (selectedTee.slope_rating || selectedTee.slope || 'N/A') : 'N/A';
+            document.getElementById('previewRatingInfo').innerText = `Rating: ${rating} / Slope: ${slope}`;
+
+            const holes = activeCourseData.holesList || activeCourseData.holes || [];
+            const holeTable = document.getElementById('previewHoleTable');
+
+            let trHoles = '<tr class="text-slate-400 font-bold border-b border-slate-800"><td class="pr-2">Hole</td>';
+            let trPar = '<tr><td class="pr-2 font-semibold text-slate-300">Par</td>';
+            let trHcp = '<tr><td class="pr-2 font-semibold text-amber-400">HCP</td>';
+
+            for (let i = 1; i <= 18; i++) {
+                const hData = holes.find(h => (h.number || h.hole_number || h.hole) === i) || holes[i - 1] || { par: 4, handicap_index: i };
+                const parVal = hData.par || 4;
+                const hcpVal = hData.handicap_index ?? hData.hcp ?? hData.handicap ?? i;
+
+                trHoles += `<td class="px-1 text-center font-mono text-[10px]">${i}</td>`;
+                trPar += `<td class="px-1 text-center font-mono text-[10px] text-white">${parVal}</td>`;
+                trHcp += `<td class="px-1 text-center font-mono text-[10px] text-amber-400">${hcpVal}</td>`;
+            }
+
+            trHoles += '</tr>';
+            trPar += '</tr>';
+            trHcp += '</tr>';
+
+            holeTable.innerHTML = `<table class="w-full text-left"><thead>${trHoles}</thead><tbody>${trPar}${trHcp}</tbody></table>`;
+        }
+
+        function applySelectedCourse() {
+            if (!activeCourseData) return;
+            const teeIndex = document.getElementById('teeSelectDropdown').value;
+            const tees = activeCourseData.tees || activeCourseData.tee_sets || [];
+            const selectedTee = tees[teeIndex] || (tees.length > 0 ? tees[0] : null);
+
+            state.courseName = activeCourseData.course_name || activeCourseData.name;
+            state.courseId = activeCourseData.id || '';
+            state.courseLat = activeCourseData.lat ?? activeCourseData.latitude ?? null;
+            state.courseLng = activeCourseData.lng ?? activeCourseData.longitude ?? null;
+            const teeName = selectedTee ? (selectedTee.tee_name || selectedTee.name || 'Standard') : 'Standard';
+            const teeColor = selectedTee ? String(selectedTee.tee_color || teeName).toLowerCase() : '';
+            state.courseHoles = {};
+
+            const holes = activeCourseData.holesList || activeCourseData.holes || [];
+
+            for (let i = 1; i <= 18; i++) {
+                const hData = holes.find(h => (h.number || h.hole_number || h.hole) === i) || holes[i - 1];
+                if (hData) {
+                    const yardages = hData.yardages || {};
+                    state.courseHoles[i] = {
+                        par: hData.par || 4,
+                        handicapIndex: hData.handicap_index ?? hData.hcp ?? hData.handicap ?? i,
+                        yards: yardages[teeColor] ?? yardages[teeName.toLowerCase()] ?? null
+                    };
+                } else {
+                    state.courseHoles[i] = { par: 4, handicapIndex: i };
+                }
+            }
+
+            const fullCourseText = `${state.courseName} (${teeName})`;
+
+            document.getElementById('headerCourseSub').innerText = fullCourseText;
+            document.getElementById('setupCourseText').innerText = fullCourseText;
+
+            alert(`✅ Course Data Applied!\n\nCourse: ${state.courseName}\nTee: ${teeName}\n18-Hole Par & HCP Data Ready.`);
+
+            closeCourseModal();
+            document.getElementById('teeSelectContainer').classList.add('hidden');
+            document.getElementById('courseSearchResults').innerHTML = '';
+            document.getElementById('courseSearchInput').value = '';
+            activeCourseData = null;
+        }
+
+        function getPlayerHoleHandicapBonus(pIdx, holeNum) {
+            const playerHcp = state.handicaps[pIdx] || 0;
+            if (playerHcp <= 0) return 0;
+
+            if (state.courseHoles && state.courseHoles[holeNum]) {
+                const hcpIndex = state.courseHoles[holeNum].handicapIndex;
+                if (hcpIndex && hcpIndex <= playerHcp) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            return holeNum <= playerHcp ? 1 : 0;
+        }
+
+        function checkActiveGameExists() {
+            const savedState = localStorage.getItem('tvpc_golf_active_game');
+            const card = document.getElementById('resumeGameCard');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    document.getElementById('resumeGameSub').innerText = `${parsed.title} (Hole ${parsed.currentHole})`;
+                    card.classList.remove('hidden');
+                } catch (e) {
+                    card.classList.add('hidden');
+                }
+            } else {
+                card.classList.add('hidden');
+            }
+        }
+
+        function resumeActiveGame() {
+            const savedState = localStorage.getItem('tvpc_golf_active_game');
+            if (savedState) {
+                state = JSON.parse(savedState);
+                if (!state.holeSticks) state.holeSticks = {};
+                if (!state.handicaps) state.handicaps = state.players.map(() => 0);
+                if (!state.scratchScores) state.scratchScores = Array.from({ length: 19 }, () => state.players.map(() => 0));
+                if (!state.courseHoles) state.courseHoles = {};
+
+                document.getElementById('setupScreen').classList.add('hidden');
+                document.getElementById('gameScreen').classList.remove('hidden');
+                document.getElementById('btnOpenCourse').classList.add('hidden');
+                document.getElementById('btnViewScore').classList.remove('hidden');
+                document.getElementById('btnMap').classList.remove('hidden');
+                document.getElementById('btnReset').classList.remove('hidden');
+                document.getElementById('headerGameTitle').innerText = state.title;
+                document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
+                document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected";
+
+                history.pushState({ inGame: true }, "");
+                renderHole();
+            }
+        }
+
+        function getStickBadgeHTML(stick) {
+            if (!stick) return '';
+            return `<span class="w-5 h-5 rounded-full font-bold text-[10px] ${stick.bg} ${stick.text} flex items-center justify-center shrink-0 shadow-sm">${stick.label}</span>`;
+        }
+
+        function renderSetupPlayers() {
+            const container = document.getElementById('playerInputs');
+            container.innerHTML = '';
+
+            if (!state.handicaps) state.handicaps = state.players.map(() => 0);
+
+            state.players.forEach((name, index) => {
+                const hcp = state.handicaps[index] !== undefined ? state.handicaps[index] : 0;
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2';
+                div.innerHTML = `
+                        <span class="text-[11px] font-bold text-slate-500 w-3">${index + 1}</span>
+                        <div class="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
+                            <input type="text" value="${escapeHtml(name)}" onfocus="this.select()" onchange="updatePlayerName(${index}, this.value)" placeholder="Enter name"
+                                class="flex-1 bg-transparent text-white text-xs focus:outline-none font-medium">
+                        </div>
+                        <div class="w-16 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 focus-within:border-emerald-500">
+                            <span class="text-[9px] text-slate-500 font-bold mr-1">HCP</span>
+                            <input type="number" value="${hcp}" onfocus="this.select()" onchange="updatePlayerHandicap(${index}, this.value)" placeholder="0"
+                                class="w-full bg-transparent text-white text-xs focus:outline-none font-medium text-center">
+                        </div>
+                        ${state.players.length > 2 ? `
+                            <button onclick="removePlayerInput(${index})" class="text-slate-500 hover:text-rose-400 px-1 py-1 text-xs">✕</button>
+                        ` : '<span class="w-3"></span>'}
+                    `;
+                container.appendChild(div);
+            });
+
+            document.getElementById('btnAddPlayer').style.display = state.players.length >= 4 ? 'none' : 'flex';
+        }
+
+        function updatePlayerName(index, val) {
+            state.players[index] = val.trim() || `Player ${index + 1}`;
+        }
+
+        function updatePlayerHandicap(index, val) {
+            if (!state.handicaps) state.handicaps = [];
+            state.handicaps[index] = parseInt(val, 10) || 0;
+        }
+
+        function addPlayerInput() {
+            if (state.players.length < 4) {
+                state.players.push(`Player ${state.players.length + 1}`);
+                if (!state.handicaps) state.handicaps = [];
+                state.handicaps.push(0);
+                renderSetupPlayers();
+            }
+        }
+
+        function removePlayerInput(index) {
+            if (state.players.length > 2) {
+                state.players.splice(index, 1);
+                if (state.handicaps) state.handicaps.splice(index, 1);
+                renderSetupPlayers();
+            }
+        }
+
+        function renderDoubleHolesGrid() {
+            const grid = document.getElementById('doubleHolesGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 18; i++) {
+                const checked = DEFAULT_BASE_DOUBLES.includes(i) ? 'checked' : '';
+                grid.innerHTML += `
+                        <label class="cursor-pointer">
+                            <input type="checkbox" value="${i}" ${checked} class="peer hidden double-hole-check">
+                            <div class="w-full py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-center text-[11px] font-semibold text-slate-400 peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500 peer-checked:text-emerald-400 hover:border-slate-700">
+                                ${i}
+                            </div>
+                        </label>
+                    `;
+            }
+        }
+
+        function saveCurrentGameState() {
+            localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
+        }
+
+        function startGame() {
+            const modeRadios = document.getElementsByName('gameMode');
+            for (let radio of modeRadios) {
+                if (radio.checked) {
+                    state.mode = radio.value;
+                    break;
+                }
+            }
+
+            const checks = document.querySelectorAll('.double-hole-check:checked');
+            state.baseDoubleHoles = Array.from(checks).map(c => parseInt(c.value));
+
+            state.scores = {};
+            state.ties = {};
+            state.holeSticks = {};
+            state.scratchScores = Array.from({ length: 19 }, () => state.players.map(() => 0));
+
+            for (let h = 1; h <= 18; h++) {
+                state.scores[h] = {};
+                state.players.forEach((_, idx) => state.scores[h][idx] = 0);
+                state.ties[h] = false;
+            }
+
+            state.currentHole = 1;
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('btnOpenCourse').classList.add('hidden');
+            document.getElementById('btnViewScore').classList.remove('hidden');
+                document.getElementById('btnMap').classList.remove('hidden');
+            document.getElementById('btnReset').classList.remove('hidden');
+            document.getElementById('headerGameTitle').innerText = state.title;
+            document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
+
+            history.pushState({ inGame: true }, "");
+            saveCurrentGameState();
+            renderHole();
+        }
+
+        function getHoleMultiplier(holeNum) {
+            let baseVal = state.baseDoubleHoles.includes(holeNum) ? 2 : 1;
+
+            if (state.mode === 'multiply') {
+                let prevHole = holeNum - 1;
+                let tieCount = 0;
+                while (prevHole >= 1 && state.ties[prevHole]) {
+                    tieCount++;
+                    prevHole--;
+                }
+                return baseVal * Math.pow(2, tieCount);
+            } else {
+                let prevHole = holeNum - 1;
+                let carryoverScore = 0;
+                while (prevHole >= 1 && state.ties[prevHole]) {
+                    const carry = state.baseDoubleHoles.includes(prevHole) ? 2 : 1;
+                    carryoverScore += carry;
+                    prevHole--;
+                }
+                return baseVal + carryoverScore;
+            }
+        }
+
+        function renderHole() {
+            const h = state.currentHole;
+            document.getElementById('holeDisplay').innerText = `HOLE ${h} / 18`;
+
+            const holeInfo = state.courseHoles && state.courseHoles[h] ? state.courseHoles[h] : { par: 4, handicapIndex: h };
+            document.getElementById('displayPar').innerText = `Par: ${holeInfo.par}`;
+            document.getElementById('displayHcpIndex').innerText = `HCP Index: ${holeInfo.handicapIndex}`;
+            document.getElementById('displayYards').innerText = holeInfo.yards ? `${holeInfo.yards} yd` : '';
+            document.getElementById('displayYards').classList.toggle('hidden', !holeInfo.yards);
+            document.getElementById('displayYardsSep').classList.toggle('hidden', !holeInfo.yards);
+
+            const mult = getHoleMultiplier(h);
+            const banner = document.getElementById('multiplierBanner');
+
+            if (mult === 1) {
+                banner.className = "mt-1 py-1 px-3 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700";
+                banner.innerHTML = `REGULAR HOLE (1pt per win)`;
+            } else if (mult === 2) {
+                banner.className = "mt-1 py-1 px-3 rounded-lg font-extrabold text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40";
+                banner.innerHTML = `🔥 DOUBLE HOLE (2pts per win)`;
+            } else {
+                banner.className = "mt-1 py-1 px-3 rounded-lg font-black text-xs bg-rose-500/20 text-rose-400 border border-rose-500/40";
+                banner.innerHTML = `🚨🚨 ${mult}x MULTIPLIER (${mult}pts per win)`;
+            }
+
+            const container = document.getElementById('holeScoreInputs');
+            container.innerHTML = '';
+
+            const currentHoleSticks = state.holeSticks[h] || [];
+
+            state.players.forEach((pName, pIdx) => {
+                const skinScore = state.scores[h][pIdx] || 0;
+                const scratchVal = state.scratchScores[h][pIdx] || '';
+                const isWinner = skinScore > 0;
+                const stick = currentHoleSticks[pIdx];
+
+                const bonus = getPlayerHoleHandicapBonus(pIdx, h);
+                const hasHcpBadge = bonus > 0;
+
+                container.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-950 border ${isWinner ? 'border-emerald-500/60 bg-emerald-500/5' : 'border-slate-800'} rounded-lg px-2.5 py-1">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition flex items-center gap-0.5 ${isWinner ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}">
+                                    WIN
+                                </button>
+                                ${getStickBadgeHTML(stick)}
+                                <span class="font-bold text-white text-xs truncate max-w-[80px]">${pName}</span>
+                                ${hasHcpBadge ? '<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded">(-1)</span>' : ''}
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="flex items-center bg-slate-900 border border-slate-700 px-2 py-0.5 rounded-md">
+                                    <span class="text-[9px] text-slate-400 mr-1 font-bold">Scratch</span>
+                                    <input type="number" value="${scratchVal}" onfocus="this.select()" onchange="updateScratchScore(${pIdx}, this.value)" placeholder="0"
+                                        class="w-7 bg-transparent text-amber-400 text-xs font-black text-center focus:outline-none">
+                                </div>
+                                <div class="flex items-center bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded-md">
+                                    <span class="text-[9px] text-slate-400 mr-0.5 font-bold">Skin</span>
+                                    <input type="number" value="${skinScore}" onfocus="this.select()" onchange="updateManualSkinScore(${pIdx}, this.value)" placeholder="0"
+                                        class="w-7 bg-transparent text-emerald-400 text-xs font-black text-center focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            });
+
+            const inlineBox = document.getElementById('inlineTeamResult');
+            const hasScore = state.players.some((_, idx) => (state.scores[h][idx] || 0) > 0);
+            const isTie = state.ties[h];
+            const hasSticks = state.holeSticks[h] && state.holeSticks[h].length > 0;
+
+            if (hasSticks || hasScore || isTie) {
+                updateInlineTeamResultBox(h);
+            } else {
+                inlineBox.classList.add('hidden');
+            }
+
+            renderLiveTotals();
+            saveCurrentGameState();
+        }
+
+        function updateInlineTeamResultBox(h) {
+            const currentSticks = state.holeSticks[h] || [];
+            const inlineBox = document.getElementById('inlineTeamResult');
+
+            if (!currentSticks || currentSticks.length === 0) {
+                inlineBox.classList.add('hidden');
+                return;
+            }
+
+            let allScore = state.players.map((_, idx) => state.scratchScores[h][idx] || 0);
+            const minScratch = Math.min(...allScore);
+
+            let assignedScratch = [];
+            state.players.forEach((_, idx) => {
+                const stick = currentSticks[idx];
+                let rawScore = (stick.label === 'J') ? minScratch : (state.scratchScores[h][idx] || 0);
+                const bonus = getPlayerHoleHandicapBonus(idx, h);
+                const finalScore = Math.max(0, rawScore - bonus);
+                assignedScratch.push(finalScore);
+            });
+
+            let redCount = 0, greenCount = 0;
+            currentSticks.forEach(st => {
+                if (st.label === 'R') redCount++;
+                if (st.label === 'G') greenCount++;
+            });
+            let jokerJoinColor = (redCount < greenCount) ? 'R' : 'G';
+
+            let redScratchSum = 0, greenScratchSum = 0;
+            let redDetails = [], greenDetails = [];
+
+            state.players.forEach((pName, idx) => {
+                const stick = currentSticks[idx];
+                const rawScore = state.scratchScores[h][idx] || 0;
+                const finalSc = assignedScratch[idx];
+                const bonus = getPlayerHoleHandicapBonus(idx, h);
+
+                let effectiveTeam = stick.label;
+                if (stick.label === 'J') {
+                    effectiveTeam = jokerJoinColor;
+                }
+
+                let desc = `${pName}(${stick.label === 'J' ? 'J->' + minScratch : rawScore}${bonus > 0 ? ', -1hcp=' + finalSc : ''})`;
+
+                if (effectiveTeam === 'R') {
+                    redScratchSum += finalSc;
+                    redDetails.push(desc);
+                } else if (effectiveTeam === 'G') {
+                    greenScratchSum += finalSc;
+                    greenDetails.push(desc);
+                }
+            });
+
+            const mult = getHoleMultiplier(h);
+            let resultMsg = "";
+            if (state.ties[h]) {
+                resultMsg = `<span class='text-amber-400 font-bold'>🤝 Tie (Carryover)</span>`;
+            } else if (redScratchSum < greenScratchSum) {
+                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 Red Team Wins (+${mult} pts)</span>`;
+            } else if (greenScratchSum < redScratchSum) {
+                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 Green Team Wins (+${mult} pts)</span>`;
+            } else {
+                resultMsg = `<span class='text-amber-400 font-bold'>🤝 Tie (Carryover)</span>`;
+            }
+
+            inlineBox.innerHTML = `
+                    <div class="text-[11px] font-semibold text-rose-400">🔴 Red Team (Total: ${redScratchSum})</div>
+                    <div class="text-[10px] text-slate-400 pl-2">${redDetails.join(' | ') || 'None'}</div>
+                    <div class="text-[11px] font-semibold text-emerald-400 mt-1">🟢 Green Team (Total: ${greenScratchSum})</div>
+                    <div class="text-[10px] text-slate-400 pl-2">${greenDetails.join(' | ') || 'None'}</div>
+                    <div class="pt-1.5 mt-1 border-t border-slate-800 text-center text-xs">
+                        ${resultMsg}
+                    </div>
+                `;
+            inlineBox.classList.remove('hidden');
+        }
+
+        function updateScratchScore(pIdx, val) {
+            if (!state.scratchScores[state.currentHole]) {
+                state.scratchScores[state.currentHole] = state.players.map(() => 0);
+            }
+            state.scratchScores[state.currentHole][pIdx] = parseInt(val, 10) || 0;
+            saveCurrentGameState();
+        }
+
+        function updateManualSkinScore(pIdx, val) {
+            const h = state.currentHole;
+            state.scores[h][pIdx] = parseInt(val, 10) || 0;
+            if (state.scores[h][pIdx] > 0) {
+                state.ties[h] = false;
+            }
+            document.getElementById('inlineTeamResult').classList.add('hidden');
+            renderHole();
+        }
+
+        function toggleWinnerManual(pIdx) {
+            const h = state.currentHole;
+            const mult = getHoleMultiplier(h);
+
+            document.getElementById('inlineTeamResult').classList.add('hidden');
+
+            if (state.scores[h][pIdx] > 0) {
+                state.scores[h][pIdx] = 0;
+            } else {
+                state.scores[h][pIdx] = mult;
+            }
+
+            state.ties[h] = false;
+            renderHole();
+        }
+
+        function setTieHole() {
+            const h = state.currentHole;
+            state.players.forEach((_, pIdx) => {
+                state.scores[h][pIdx] = 0;
+            });
+            state.ties[h] = true;
+            document.getElementById('inlineTeamResult').classList.add('hidden');
+            changeHole(1);
+        }
+
+        function executeTeamDraw() {
+            const h = state.currentHole;
+            const currentScratch = state.scratchScores[h] || [];
+            const allEntered = state.players.every((_, idx) => {
+                const sc = currentScratch[idx];
+                return sc !== undefined && sc !== null && sc !== "" && parseInt(sc, 10) > 0;
+            });
+
+            if (!allEntered) {
+                alert("Please enter a valid scratch score (1 or greater) for all players before drawing teams.");
+                return;
+            }
+
+            if (!state.holeSticks[h] || state.holeSticks[h].length === 0) {
+                const RED = { color: 'red', label: 'R', bg: 'bg-rose-500', text: 'text-white' };
+                const GREEN = { color: 'green', label: 'G', bg: 'bg-emerald-500', text: 'text-slate-950' };
+                const JOKER = { color: 'joker', label: 'J', bg: 'bg-slate-950 border border-slate-700', text: 'text-yellow-400 font-black' };
+                // 2-3 players get a balanced pool so both teams always exist.
+                const stickPool = state.players.length === 2 ? [RED, GREEN]
+                    : state.players.length === 3 ? [RED, GREEN, JOKER]
+                        : [RED, RED, GREEN, GREEN, JOKER];
+                for (let i = stickPool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [stickPool[i], stickPool[j]] = [stickPool[j], stickPool[i]];
+                }
+                state.holeSticks[h] = state.players.map((_, idx) => stickPool[idx]);
+            }
+
+            const currentSticks = state.holeSticks[h];
+
+            let allScore = state.players.map((_, idx) => state.scratchScores[h][idx] || 0);
+            const minScratch = Math.min(...allScore);
+
+            let assignedScratch = [];
+            state.players.forEach((_, idx) => {
+                const stick = currentSticks[idx];
+                let rawScore = (stick.label === 'J') ? minScratch : (state.scratchScores[h][idx] || 0);
+                const bonus = getPlayerHoleHandicapBonus(idx, h);
+                const finalScore = Math.max(0, rawScore - bonus);
+                assignedScratch.push(finalScore);
+            });
+
+            let redCount = 0, greenCount = 0;
+            currentSticks.forEach(st => {
+                if (st.label === 'R') redCount++;
+                if (st.label === 'G') greenCount++;
+            });
+            let jokerJoinColor = (redCount < greenCount) ? 'R' : 'G';
+
+            let redScratchSum = 0, greenScratchSum = 0;
+            let redIndices = [], greenIndices = [];
+
+            state.players.forEach((_, idx) => {
+                const stick = currentSticks[idx];
+                const finalSc = assignedScratch[idx];
+
+                let effectiveTeam = stick.label;
+                if (stick.label === 'J') {
+                    effectiveTeam = jokerJoinColor;
+                }
+
+                if (effectiveTeam === 'R') {
+                    redScratchSum += finalSc;
+                    redIndices.push(idx);
+                } else if (effectiveTeam === 'G') {
+                    greenScratchSum += finalSc;
+                    greenIndices.push(idx);
+                }
+            });
+
+            let calculatedWinners = [];
+            const mult = getHoleMultiplier(h);
+
+            if (redScratchSum < greenScratchSum) {
+                calculatedWinners = redIndices;
+            } else if (greenScratchSum < redScratchSum) {
+                calculatedWinners = greenIndices;
+            }
+
+            state.players.forEach((_, pIdx) => {
+                state.scores[h][pIdx] = 0;
+            });
+
+            if (calculatedWinners.length > 0) {
+                calculatedWinners.forEach(idx => {
+                    state.scores[h][idx] = mult;
+                });
+                state.ties[h] = false;
+            } else {
+                state.ties[h] = true;
+            }
+
+            updateInlineTeamResultBox(h);
+            renderHole();
+        }
+
+        function changeHole(dir) {
+            const h = state.currentHole;
+
+            if (dir > 0) {
+                const hasScore = state.players.some((_, idx) => (state.scores[h][idx] || 0) > 0);
+                const isTie = state.ties[h];
+
+                if (!hasScore && !isTie) {
+                    const confirmMove = confirm("No score entered for this hole. Move to next hole?");
+                    if (!confirmMove) return;
+                }
+            }
+
+            const next = h + dir;
+            if (next >= 1 && next <= 18) {
+                showHoleTransition(next, () => {
+                    state.currentHole = next;
+                    renderHole();
+                });
+            } else if (next > 18) {
+                showResults();
+            }
+        }
+
+        function showHoleTransition(targetHole, callback) {
+            const overlay = document.getElementById('holeTransitionOverlay');
+            const holeText = document.getElementById('transitionHoleText');
+            const holeInfoText = document.getElementById('transitionHoleInfo');
+            const multText = document.getElementById('transitionMultText');
+
+            const mult = getHoleMultiplier(targetHole);
+            const holeInfo = state.courseHoles && state.courseHoles[targetHole] ? state.courseHoles[targetHole] : { par: 4, handicapIndex: targetHole };
+
+            holeText.innerText = `HOLE ${targetHole}`;
+            holeInfoText.innerText = `Par ${holeInfo.par} | HCP Index ${holeInfo.handicapIndex}`;
+
+            if (mult === 1) multText.innerText = "REGULAR HOLE (1pt)";
+            else if (mult === 2) multText.innerText = "🔥 DOUBLE HOLE (2pts)";
+            else multText.innerText = `🚨🚨 ${mult}x MULTIPLIER (${mult}pts)`;
+
+            overlay.classList.remove('hidden');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                if (callback) callback();
+            }, 500);
+        }
+
+        function calculateTotals() {
+            const totals = state.players.map(() => 0);
+            const scratchTotals = state.players.map(() => 0);
+            let playedCount = 0;
+
+            for (let h = 1; h <= 18; h++) {
+                let holeHasScore = false;
+                state.players.forEach((_, pIdx) => {
+                    const pts = state.scores[h][pIdx] || 0;
+                    if (pts > 0) holeHasScore = true;
+                    totals[pIdx] += pts;
+
+                    const sc = (state.scratchScores && state.scratchScores[h]) ? (state.scratchScores[h][pIdx] || 0) : 0;
+                    scratchTotals[pIdx] += sc;
+                });
+                if (holeHasScore || state.ties[h]) playedCount++;
+            }
+            return { totals, scratchTotals, playedCount };
+        }
+
+        function renderLiveTotals() {
+            const { totals, playedCount } = calculateTotals();
+            document.getElementById('completedHolesCount').innerText = `${playedCount} / 18 Played`;
+
+            const container = document.getElementById('liveTotalsList');
+            container.innerHTML = '';
+            const currentHoleSticks = state.holeSticks[state.currentHole] || [];
+
+            state.players.forEach((pName, pIdx) => {
+                const tot = totals[pIdx];
+                const stick = currentHoleSticks[pIdx];
+
+                container.innerHTML += `
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 flex justify-between items-center">
+                            <div class="flex items-center gap-1.5 truncate">
+                                ${getStickBadgeHTML(stick)}
+                                <span class="text-xs font-semibold text-slate-300 truncate">${pName}</span>
+                            </div>
+                            <span class="text-xs font-bold ${tot > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                                ${tot} pts
+                            </span>
+                        </div>
+                    `;
+            });
+        }
+
+        function toggleScoreModal(show) {
+            const modal = document.getElementById('scoreModal');
+            if (show) {
+                renderMatrixTable();
+                modal.classList.remove('hidden');
+                history.pushState({ modalOpen: 'score' }, "");
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function toggleHistoryModal(show) {
+            const modal = document.getElementById('historyModal');
+            if (show) {
+                renderHistoryList();
+                modal.classList.remove('hidden');
+                history.pushState({ modalOpen: 'history' }, "");
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function showSetupScreen() {
+            saveCurrentGameState();
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+            document.getElementById('btnOpenCourse').classList.remove('hidden');
+            document.getElementById('btnViewScore').classList.add('hidden');
+            document.getElementById('btnMap').classList.add('hidden');
+            document.getElementById('btnReset').classList.add('hidden');
+            document.getElementById('headerGameTitle').innerText = "TVPC Golf Sticks";
+            document.getElementById('headerCourseSub').innerText = "No course selected";
+            document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected (Tap ⛳ Course above)";
+            checkActiveGameExists();
+        }
+
+        window.addEventListener('popstate', () => {
+            const courseModal = document.getElementById('courseModal');
+            const scoreModal = document.getElementById('scoreModal');
+            const historyModal = document.getElementById('historyModal');
+            const gameScreen = document.getElementById('gameScreen');
+
+            if (!document.getElementById('mapModal').classList.contains('hidden')) {
+                closeMapModal(true);
+                return;
+            }
+            if (!courseModal.classList.contains('hidden')) {
+                courseModal.classList.add('hidden');
+                return;
+            }
+            if (!scoreModal.classList.contains('hidden')) {
+                scoreModal.classList.add('hidden');
+                return;
+            }
+            if (!historyModal.classList.contains('hidden')) {
+                historyModal.classList.add('hidden');
+                return;
+            }
+            if (!gameScreen.classList.contains('hidden')) {
+                if (confirm("Are you sure you want to stop the game and return to setup?")) {
+                    showSetupScreen();
+                } else {
+                    history.pushState({ inGame: true }, "");
+                }
+            }
+        });
+
+        function renderMatrixTable() {
+            const { totals, scratchTotals } = calculateTotals();
+            const standingsContainer = document.getElementById('modalStandings');
+            standingsContainer.innerHTML = '';
+
+            const ranked = state.players.map((name, idx) => ({ name, pts: totals[idx] }))
+                .sort((a, b) => b.pts - a.pts);
+
+            ranked.forEach((item, rIdx) => {
+                standingsContainer.innerHTML += `
+                        <div class="flex justify-between items-center bg-slate-800/30 border border-slate-800/40 px-2.5 py-1.5 rounded-lg text-xs">
+                            <span class="text-slate-300 truncate font-semibold"><strong class="text-slate-500 mr-1">#${rIdx + 1}</strong>${item.name}</span>
+                            <span class="font-bold ${item.pts > 0 ? 'text-emerald-400' : 'text-slate-400'}">${item.pts} pts</span>
+                        </div>
+                    `;
+            });
+
+            const headerRow = document.getElementById('matrixHeaderRow');
+            headerRow.innerHTML = `
+                    <th class="py-1.5 px-1 font-medium w-10 text-center">Hole</th>
+                    <th class="py-1.5 px-1 font-medium text-center">Par/HDCP</th>
+                    <th class="py-1.5 px-1 font-medium text-center">Mult</th>
+                ` + state.players.map(p => `<th class="py-1.5 px-1 font-medium text-right truncate max-w-[60px] pr-1">${p}</th>`).join('');
+
+            const tbody = document.getElementById('matrixTableBody');
+            tbody.innerHTML = '';
+
+            for (let h = 1; h <= 18; h++) {
+                const mult = getHoleMultiplier(h);
+                const holeInfo = state.courseHoles && state.courseHoles[h] ? state.courseHoles[h] : { par: 4, handicapIndex: h };
+
+                const playerCells = state.players.map((_, pIdx) => {
+                    const skinPts = state.scores[h][pIdx] || 0;
+                    const scratchVal = (state.scratchScores && state.scratchScores[h]) ? (state.scratchScores[h][pIdx] || 0) : 0;
+                    return `
+                            <td class="py-1 px-0.5 text-center font-mono align-middle">
+                                <div class="flex flex-col items-center justify-center leading-tight">
+                                    <span class="text-amber-400 font-extrabold text-[11px]">[${scratchVal}]</span>
+                                    ${skinPts > 0
+                            ? `<span class="text-emerald-400 font-black text-[10px]">+${skinPts}</span>`
+                            : `<span class="opacity-0 font-black text-[10px] pointer-events-none">+0</span>`
+                        }
+                                </div>
+                            </td>
+                        `;
+                }).join('');
+
+                tbody.innerHTML += `
+                        <tr class="${state.currentHole === h ? 'bg-emerald-500/10' : 'hover:bg-slate-800/20'} transition-colors">
+                            <td class="py-1.5 px-1 font-medium text-slate-300 text-center">H${h}</td>
+                            <td class="py-1.5 px-1 text-center text-slate-400 font-mono text-[10px]">
+                                <span class="text-slate-200">P${holeInfo.par}</span>
+                                <span class="text-slate-600 mx-0.5">/</span>
+                                <span class="text-slate-400">${holeInfo.handicapIndex}</span>
+                            </td>
+                            <td class="py-1.5 px-1 text-center font-bold ${mult > 1 ? 'text-amber-400' : 'text-slate-600'}">${mult}x</td>
+                            ${playerCells}
+                        </tr>
+                    `;
+            }
+
+            const tfoot = document.getElementById('matrixTableFooter');
+            const scratchTotalCells = state.players.map((_, pIdx) => {
+                return `<td class="py-2 px-1 text-right font-mono text-amber-400 pr-1">${scratchTotals[pIdx]}</td>`;
+            }).join('');
+            const skinTotalCells = state.players.map((_, pIdx) => {
+                return `<td class="py-2 px-1 text-right font-mono text-emerald-400 pr-1">${totals[pIdx]} pts</td>`;
+            }).join('');
+
+            tfoot.innerHTML = `
+                    <tr>
+                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">Scratch Total</td>
+                        ${scratchTotalCells}
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">Skin Points Total</td>
+                        ${skinTotalCells}
+                    </tr>
+                `;
+        }
+
+        function showResults() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            document.getElementById('resultGameTitle').innerText = state.title;
+
+            const { totals } = calculateTotals();
+            const ranked = state.players.map((name, idx) => ({ name, points: totals[idx] })).sort((a, b) => b.points - a.points);
+
+            const container = document.getElementById('finalLeaderboard');
+            container.innerHTML = '';
+
+            ranked.forEach((item, index) => {
+                const isWinner = index === 0 && item.points > 0;
+                container.innerHTML += `
+                        <div class="bg-slate-900 border ${isWinner ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-800'} rounded-xl p-3 flex justify-between items-center">
+                            <div class="flex items-center space-x-2.5">
+                                <span class="text-base font-black ${index === 0 ? 'text-amber-400' : 'text-slate-500'}">#${index + 1}</span>
+                                <h3 class="font-bold text-white text-sm">${item.name}</h3>
+                            </div>
+                            <span class="text-xl font-black ${item.points > 0 ? 'text-emerald-400' : 'text-slate-400'}">
+                                ${item.points} pts
+                            </span>
+                        </div>
+                    `;
+            });
+
+            saveMatchToHistory(ranked);
+            localStorage.removeItem('tvpc_golf_active_game');
+        }
+
+        function saveMatchToHistory(ranked) {
+            let historyList = [];
+            try {
+                historyList = JSON.parse(localStorage.getItem('tvpc_golf_history') || '[]');
+            } catch (e) {
+                historyList = [];
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                title: state.title,
+                standings: ranked
+            };
+
+            historyList.unshift(newRecord);
+            localStorage.setItem('tvpc_golf_history', JSON.stringify(historyList));
+        }
+
+        function renderHistoryList() {
+            let historyList = [];
+            try {
+                historyList = JSON.parse(localStorage.getItem('tvpc_golf_history') || '[]');
+            } catch (e) {
+                historyList = [];
+            }
+
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+
+            if (historyList.length === 0) {
+                container.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-center text-slate-500 text-xs">No saved match history found.</div>`;
+                return;
+            }
+
+            historyList.forEach(item => {
+                const winners = item.standings.filter(s => s.points === item.standings[0].points && s.points > 0);
+                const winnerText = winners.length > 0 ? winners.map(w => w.name).join(', ') : 'No Winner';
+                const standingsHTML = item.standings.map((s, idx) => `
+                        <div class="flex justify-between items-center text-[11px] py-0.5">
+                            <span class="text-slate-400">${idx + 1}. ${s.name}</span>
+                            <span class="font-bold ${s.points > 0 ? 'text-emerald-400' : 'text-slate-500'}">${s.points} pts</span>
+                        </div>
+                    `).join('');
+
+                container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-1.5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-white text-xs">${item.title}</h3>
+                                    <p class="text-[10px] text-slate-500">${item.date}</p>
+                                </div>
+                                <button onclick="deleteHistoryItem(${item.id})" class="text-slate-600 hover:text-rose-400 text-xs px-1 py-0.5">✕</button>
+                            </div>
+                            <div class="text-xs bg-slate-950 p-2 rounded-lg border border-slate-800/80">
+                                <p class="text-[10px] text-amber-400 font-bold mb-1">🏆 ${winnerText}</p>
+                                <div class="divide-y divide-slate-800/40">${standingsHTML}</div>
+                            </div>
+                        </div>
+                    `;
+            });
+        }
+
+        function deleteHistoryItem(id) {
+            let historyList = JSON.parse(localStorage.getItem('tvpc_golf_history') || '[]');
+            historyList = historyList.filter(item => item.id !== id);
+            localStorage.setItem('tvpc_golf_history', JSON.stringify(historyList));
+            renderHistoryList();
+        }
+
+        function clearAllHistory() {
+            if (confirm("Are you sure you want to delete all match history?")) {
+                localStorage.removeItem('tvpc_golf_history');
+                renderHistoryList();
+            }
+        }
+
+        // ================= COURSE MAP =================
+        // OpenGolfAPI has no hole coordinates, so greens are pinned by the user
+        // (long-press) and saved per course in localStorage.
+        const DEFAULT_MAP_CENTER = [37.5665, 126.9780]; // Seoul
+        let leafletMap = null, satLayer = null, streetLayer = null, mapOverlay = null;
+        let usingSatellite = true;
+        let mapHole = 1;
+        let meLatLng = null, targetLatLng = null;
+        let geoWatchId = null, mapLocError = '', mapToast = '', mapToastTimer = null;
+        let mapAutoCentered = false, suppressMapClickUntil = 0;
+
+        function greensKey() {
+            return 'tvpc_golf_greens_' + (state.courseId || 'custom');
+        }
+
+        function loadGreens() {
+            try {
+                return JSON.parse(localStorage.getItem(greensKey()) || '{}');
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveGreens(greens) {
+            localStorage.setItem(greensKey(), JSON.stringify(greens));
+        }
+
+        function toYards(meters) {
+            return Math.round(meters * 1.0936133);
+        }
+
+        function openMapModal() {
+            if (typeof L === 'undefined') {
+                alert('Map library failed to load. Check your internet connection.');
+                return;
+            }
+            document.getElementById('mapModal').classList.remove('hidden');
+            history.pushState({ modalOpen: 'map' }, "");
+            mapHole = state.currentHole || 1;
+            targetLatLng = null;
+            if (!leafletMap) initLeafletMap();
+            setTimeout(() => {
+                leafletMap.invalidateSize();
+                centerMapForHole(true);
+                renderMap();
+            }, 50);
+            startGeoWatch();
+            renderMap();
+        }
+
+        function closeMapModal(fromPopState) {
+            // The close button goes through history so the back-button stack stays in sync.
+            if (!fromPopState) {
+                history.back();
+                return;
+            }
+            document.getElementById('mapModal').classList.add('hidden');
+            if (geoWatchId !== null) {
+                navigator.geolocation.clearWatch(geoWatchId);
+                geoWatchId = null;
+            }
+        }
+
+        function initLeafletMap() {
+            leafletMap = L.map('courseMap', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView(DEFAULT_MAP_CENTER, 12);
+            L.control.attribution({ position: 'topright' }).addTo(leafletMap);
+            satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxNativeZoom: 18, maxZoom: 20, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
+            }).addTo(leafletMap);
+            streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxNativeZoom: 19, maxZoom: 20, attribution: '© OpenStreetMap contributors'
+            });
+            mapOverlay = L.layerGroup().addTo(leafletMap);
+
+            leafletMap.on('click', e => {
+                if (Date.now() < suppressMapClickUntil) return;
+                targetLatLng = e.latlng;
+                renderMap();
+            });
+            // Desktop right-click / Android long-press.
+            leafletMap.on('contextmenu', e => {
+                if (Date.now() < suppressMapClickUntil) return;
+                suppressMapClickUntil = Date.now() + 800;
+                pinGreen(e.latlng);
+            });
+
+            // iOS Safari never fires contextmenu, so detect long-press manually.
+            const el = document.getElementById('courseMap');
+            let pressTimer = null, pressStart = null;
+            el.addEventListener('touchstart', e => {
+                clearTimeout(pressTimer);
+                if (e.touches.length !== 1) return;
+                pressStart = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+                pressTimer = setTimeout(() => {
+                    suppressMapClickUntil = Date.now() + 800;
+                    pinGreen(leafletMap.mouseEventToLatLng(pressStart));
+                    if (navigator.vibrate) navigator.vibrate(30);
+                }, 600);
+            }, { passive: true });
+            el.addEventListener('touchmove', e => {
+                const t = e.touches[0];
+                if (!pressStart || e.touches.length !== 1 ||
+                    Math.hypot(t.clientX - pressStart.clientX, t.clientY - pressStart.clientY) > 10) {
+                    clearTimeout(pressTimer);
+                }
+            }, { passive: true });
+            el.addEventListener('touchend', () => clearTimeout(pressTimer));
+            el.addEventListener('touchcancel', () => clearTimeout(pressTimer));
+        }
+
+        function startGeoWatch() {
+            if (!navigator.geolocation) {
+                mapLocError = 'GPS is not supported by this browser.';
+                return;
+            }
+            if (geoWatchId !== null) return;
+            geoWatchId = navigator.geolocation.watchPosition(pos => {
+                meLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                mapLocError = '';
+                // With no green pin and no course position, the first fix is the best place to look.
+                if (!mapAutoCentered && !loadGreens()[mapHole] && state.courseLat == null) {
+                    mapAutoCentered = true;
+                    leafletMap.setView(meLatLng, 17);
+                }
+                renderMap();
+            }, err => {
+                mapLocError = err.code === 1 ? 'Location permission denied.' : 'GPS signal unavailable.';
+                renderMap();
+            }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+        }
+
+        function centerMapForHole(initial) {
+            const green = loadGreens()[mapHole];
+            if (green) {
+                leafletMap.setView(green, Math.max(leafletMap.getZoom(), 17));
+            } else if (initial) {
+                if (state.courseLat != null && state.courseLng != null) {
+                    leafletMap.setView([state.courseLat, state.courseLng], 16);
+                } else if (meLatLng) {
+                    leafletMap.setView(meLatLng, 17);
+                }
+            }
+        }
+
+        function mapSetHole(n) {
+            if (n < 1 || n > 18) return;
+            mapHole = n;
+            targetLatLng = null;
+            centerMapForHole(false);
+            renderMap();
+        }
+
+        function mapChangeHole(dir) {
+            mapSetHole(mapHole + dir);
+        }
+
+        function showMapToast(text) {
+            mapToast = text;
+            clearTimeout(mapToastTimer);
+            mapToastTimer = setTimeout(() => {
+                mapToast = '';
+                renderMap();
+            }, 2000);
+        }
+
+        function pinGreen(latlng) {
+            const greens = loadGreens();
+            greens[mapHole] = [latlng.lat, latlng.lng];
+            saveGreens(greens);
+            targetLatLng = null;
+            showMapToast(`✅ Hole ${mapHole} green pinned`);
+            renderMap();
+        }
+
+        function mapThirdAction() {
+            if (targetLatLng) {
+                pinGreen(targetLatLng);
+                return;
+            }
+            const greens = loadGreens();
+            if (!greens[mapHole]) return;
+            if (confirm(`Remove the green pin for hole ${mapHole}?`)) {
+                delete greens[mapHole];
+                saveGreens(greens);
+                renderMap();
+            }
+        }
+
+        function mapCenterMe() {
+            if (meLatLng) leafletMap.setView(meLatLng, 18);
+        }
+
+        function mapCenterGreen() {
+            const green = loadGreens()[mapHole];
+            if (green) leafletMap.setView(green, 18);
+        }
+
+        function toggleMapLayer() {
+            usingSatellite = !usingSatellite;
+            leafletMap.removeLayer(usingSatellite ? streetLayer : satLayer);
+            (usingSatellite ? satLayer : streetLayer).addTo(leafletMap);
+            document.getElementById('mapLayerBtn').innerText = usingSatellite ? 'Street' : 'Satellite';
+        }
+
+        function setDistance(id, a, b) {
+            const ok = a && b;
+            const meters = ok ? L.latLng(a).distanceTo(L.latLng(b)) : 0;
+            document.getElementById(id).innerText = ok ? `${toYards(meters)} yd` : '—';
+            document.getElementById(id + 'M').innerText = ok ? `${Math.round(meters)} m` : '';
+        }
+
+        function renderMap() {
+            if (!leafletMap) return;
+            const info = state.courseHoles && state.courseHoles[mapHole] ? state.courseHoles[mapHole] : { par: 4, handicapIndex: mapHole };
+            document.getElementById('mapHoleTitle').innerText = `HOLE ${mapHole}`;
+            document.getElementById('mapHoleSub').innerText =
+                `Par ${info.par} · HCP ${info.handicapIndex}${info.yards ? ` · ${info.yards} yd` : ''}`;
+
+            const greens = loadGreens();
+            const green = greens[mapHole] ? L.latLng(greens[mapHole]) : null;
+
+            mapOverlay.clearLayers();
+
+            Object.keys(greens).forEach(key => {
+                const n = parseInt(key, 10);
+                if (n === mapHole) return;
+                L.marker(greens[key], {
+                    icon: L.divIcon({ className: 'hole-pin', html: String(n), iconSize: [24, 24] })
+                }).on('click', () => mapSetHole(n)).addTo(mapOverlay);
+            });
+
+            if (meLatLng && targetLatLng) {
+                L.polyline([meLatLng, targetLatLng], { color: '#fbbf24', weight: 3 }).addTo(mapOverlay);
+            }
+            if (targetLatLng && green) {
+                L.polyline([targetLatLng, green], { color: '#ffffff', weight: 2, opacity: 0.7, dashArray: '6 6' }).addTo(mapOverlay);
+            }
+            if (meLatLng && green && !targetLatLng) {
+                L.polyline([meLatLng, green], { color: '#ffffff', weight: 2.5 }).addTo(mapOverlay);
+            }
+            if (green) {
+                L.marker(green, {
+                    icon: L.divIcon({ className: '', html: '<div style="font-size:30px;line-height:30px">🚩</div>', iconSize: [30, 30], iconAnchor: [6, 28] })
+                }).addTo(mapOverlay);
+            }
+            if (targetLatLng) {
+                L.circleMarker(targetLatLng, { radius: 9, color: '#fbbf24', weight: 3, fillOpacity: 0.25 }).addTo(mapOverlay);
+            }
+            if (meLatLng) {
+                L.marker(meLatLng, {
+                    icon: L.divIcon({ className: 'me-dot', iconSize: [18, 18] }), interactive: false
+                }).addTo(mapOverlay);
+            }
+
+            setDistance('distGreen', meLatLng, green);
+            document.getElementById('targetCols').classList.toggle('hidden', !targetLatLng);
+            if (targetLatLng) {
+                setDistance('distTarget', meLatLng, targetLatLng);
+                setDistance('distTG', targetLatLng, green);
+            }
+
+            let hint;
+            if (mapToast) hint = mapToast;
+            else if (mapLocError) hint = mapLocError;
+            else if (!green) hint = `Long-press the green to pin hole ${mapHole}`;
+            else if (!meLatLng) hint = 'Waiting for GPS…';
+            else hint = 'Tap: measure a point · Long-press: move green pin';
+            const hintEl = document.getElementById('mapHint');
+            hintEl.innerText = hint;
+            hintEl.className = `text-[10px] text-center ${mapLocError && !mapToast ? 'text-rose-400' : mapToast ? 'text-emerald-400' : 'text-slate-400'}`;
+
+            const third = document.getElementById('mapThirdBtn');
+            if (targetLatLng) {
+                third.innerText = '📌 Pin as Green';
+                third.className = 'py-1.5 text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg';
+            } else {
+                third.innerText = 'Unpin';
+                third.className = `py-1.5 text-[11px] font-semibold rounded-lg border ${green ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' : 'text-slate-600 bg-slate-900 border-slate-800'}`;
+            }
+        }
+
+        function confirmReset() {
+            if (confirm("Start a new game? Any active game data will be cleared.")) {
+                localStorage.removeItem('tvpc_golf_active_game');
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
