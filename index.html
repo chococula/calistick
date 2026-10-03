@@ -56,6 +56,21 @@
             font-family: 'Inter', sans-serif;
         }
 
+        /* Keep map credits clear of the hole bar overlay. */
+        #courseMap .leaflet-top.leaflet-right {
+            top: calc(env(safe-area-inset-top, 0px) + 62px);
+        }
+
+        #courseMap .leaflet-control-attribution {
+            font-size: 9px;
+            background: rgba(2, 6, 23, 0.6);
+            color: #94a3b8;
+        }
+
+        #courseMap .leaflet-control-attribution a {
+            color: #94a3b8;
+        }
+
         .hole-pin {
             background: rgba(0, 0, 0, 0.55);
             border: 1.5px solid rgba(255, 255, 255, 0.8);
@@ -101,9 +116,6 @@
                 </button>
                 <button id="btnHistory" onclick="toggleHistoryModal(true)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 font-semibold">
                     📜 History
-                </button>
-                <button id="btnMap" onclick="openMapModal()" class="hidden text-[11px] bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 px-2.5 py-1 rounded-lg border border-sky-500/30 font-semibold">
-                    🗺 Map
                 </button>
                 <button id="btnViewScore" onclick="toggleScoreModal(true)" class="hidden text-[11px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
                     📊 Leaderboard
@@ -184,109 +196,84 @@
             </button>
         </section>
 
-        <!-- GAMEPLAY SCREEN -->
-        <section id="gameScreen" class="hidden flex-1 flex flex-col p-3 space-y-3">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-center relative overflow-hidden">
-                <div class="flex justify-between items-center text-xs text-slate-400 mb-1 font-semibold">
-                    <button onclick="changeHole(-1)" class="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 hover:text-white">❮ Prev</button>
-                    <span id="holeDisplay" class="text-emerald-400 text-sm font-bold">HOLE 1 / 18</span>
-                    <button onclick="changeHole(1)" class="px-2.5 py-1 bg-slate-800 rounded-lg border border-slate-700 hover:text-white">Next ❯</button>
-                </div>
-                <div id="courseHoleInfoBar" class="my-1.5 py-1 px-2 bg-slate-950 border border-slate-800 rounded-lg flex justify-center items-center gap-4 text-xs font-bold">
-                    <span id="displayPar" class="text-slate-300">Par: —</span>
-                    <span class="text-slate-600">|</span>
-                    <span id="displayHcpIndex" class="text-amber-400">HCP Index: —</span>
-                    <span id="displayYardsSep" class="hidden text-slate-600">|</span>
-                    <span id="displayYards" class="hidden text-sky-400"></span>
-                </div>
-                <div id="multiplierBanner" class="mt-1 py-1 px-3 rounded-lg font-extrabold text-xs flex items-center justify-center gap-2"></div>
-            </div>
+        <!-- GAMEPLAY SCREEN: full-screen course map with minimal overlays -->
+        <section id="gameScreen" class="hidden fixed inset-0 z-30 bg-slate-950">
+            <div class="max-w-md mx-auto h-full relative overflow-hidden">
+                <div id="courseMap" class="absolute inset-0"></div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-[11px] font-semibold text-slate-400 uppercase">Scratch Scores & Winners</span>
-                    <div class="flex gap-1.5">
-                        <button onclick="executeTeamDraw()" class="text-[10px] text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-1 rounded-lg font-bold transition flex items-center gap-1 active:scale-95">
-                            🎲 Draw Teams
-                        </button>
-                        <button onclick="setTieHole()" class="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg font-semibold hover:bg-slate-700 active:scale-95 transition">
-                            🤝 Tie
-                        </button>
+                <!-- Top: hole bar -->
+                <div class="absolute top-0 left-0 right-0 z-[1000] px-2 space-y-1.5" style="padding-top: calc(env(safe-area-inset-top, 0px) + 8px);">
+                    <div class="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur border border-slate-700/60 rounded-2xl p-1.5 shadow-lg">
+                        <button onclick="changeHole(-1)" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base font-bold active:scale-95">❮</button>
+                        <div class="flex-1 text-center leading-tight min-w-0">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <span id="holeDisplay" class="text-base font-black text-emerald-400">HOLE 1</span>
+                                <span id="multiplierBanner"></span>
+                            </div>
+                            <div id="holeSub" class="text-[11px] text-slate-300 font-semibold truncate">Par 4 · HCP 1</div>
+                        </div>
+                        <button onclick="changeHole(1)" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base font-bold active:scale-95">❯</button>
+                        <button onclick="toggleGameMenu()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base active:scale-95">☰</button>
+                    </div>
+                    <div id="gameMenu" class="hidden ml-auto w-52 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl text-sm font-semibold">
+                        <button onclick="toggleGameMenu(); toggleScoreModal(true)" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">📊 Leaderboard</button>
+                        <button onclick="toggleGameMenu(); toggleMapLayer()" id="mapLayerBtn" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">🗺 Street map</button>
+                        <button onclick="toggleGameMenu(); exitToSetup()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">⚙️ Back to setup</button>
+                        <button onclick="toggleGameMenu(); confirmReset()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 text-rose-400">🔄 New game</button>
                     </div>
                 </div>
 
-                <div id="holeScoreInputs" class="space-y-1.5"></div>
-                <div id="inlineTeamResult" class="hidden mt-2 p-2 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1 animate-pop text-xs"></div>
+                <!-- Bottom: distance + players -->
+                <div class="absolute bottom-0 left-0 right-0 z-[1000] px-2 space-y-1.5" style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);">
+                    <div class="flex items-end gap-1.5">
+                        <div class="flex-1 min-w-0 bg-slate-900/90 backdrop-blur border border-slate-700/60 rounded-2xl px-3 py-1.5 shadow-lg">
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-[10px] text-slate-400 font-bold">TO GREEN</span>
+                                <span id="distGreen" class="text-2xl font-black text-emerald-400 leading-tight">—</span>
+                                <span id="distGreenM" class="text-[10px] text-slate-500"></span>
+                            </div>
+                            <div id="targetCols" class="hidden text-[11px] font-semibold text-slate-300">
+                                🎯 <span id="distTarget" class="text-amber-400 font-black"></span><span id="distTargetM" class="hidden"></span>
+                                <span class="text-slate-500">→ green</span> <span id="distTG" class="text-white font-black"></span><span id="distTGM" class="hidden"></span>
+                            </div>
+                            <div id="mapHint" class="text-[10px] text-slate-400 truncate"></div>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <button id="mapThirdBtn" onclick="mapThirdAction()" class="hidden w-10 h-10 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-lg"></button>
+                            <button onclick="mapCenterGreen()" class="w-10 h-10 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-lg">⛳</button>
+                            <button onclick="mapCenterMe()" class="w-10 h-10 rounded-xl bg-slate-900/90 border border-slate-700/60 shadow-lg">📍</button>
+                        </div>
+                    </div>
 
-                <div class="mt-3 pt-2 border-t border-slate-800">
-                    <button onclick="changeHole(1)" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl shadow-lg shadow-emerald-500/10 text-sm transition">
-                        Confirm & Next Hole ➔
-                    </button>
+                    <div class="bg-slate-900/95 backdrop-blur border border-slate-700/60 rounded-2xl p-1.5 shadow-xl">
+                        <div id="playerStrip" class="grid gap-1.5"></div>
+                        <div class="flex gap-1.5 mt-1.5">
+                            <button onclick="openScoreSheet()" class="flex-1 py-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm active:scale-[0.98]">✏️ Enter Scores</button>
+                            <button onclick="changeHole(1)" class="px-5 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-[0.98]">Next ❯</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Score entry bottom sheet -->
+                <div id="scoreSheet" class="hidden absolute inset-0 z-[1100] flex flex-col justify-end">
+                    <div class="absolute inset-0 bg-slate-950/60" onclick="closeScoreSheet()"></div>
+                    <div class="relative bg-slate-900 border-t border-slate-700 rounded-t-3xl px-3 pt-2 space-y-2 max-h-[88%] overflow-y-auto animate-pop" style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);">
+                        <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto"></div>
+                        <div class="flex items-center justify-between">
+                            <div id="sheetTitle" class="font-black text-emerald-400">HOLE 1 · Par 4</div>
+                            <button onclick="closeScoreSheet()" class="text-slate-400 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">Close</button>
+                        </div>
+                        <div id="holeScoreInputs" class="space-y-1.5"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="executeTeamDraw()" class="py-3 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/30 font-bold text-sm active:scale-95">🎲 Draw Teams</button>
+                            <button onclick="setTieHole()" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-95">🤝 Tie</button>
+                        </div>
+                        <div id="inlineTeamResult" class="hidden p-2 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1 text-xs"></div>
+                        <button onclick="confirmAndNext()" class="w-full py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-base active:scale-[0.98]">Confirm & Next Hole ➔</button>
+                    </div>
                 </div>
             </div>
-
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                <h3 class="text-[11px] font-bold uppercase text-slate-400 mb-2 flex justify-between items-center">
-                    <span>📊 Live Total Points</span>
-                    <span id="completedHolesCount" class="text-emerald-400">0 / 18 Played</span>
-                </h3>
-                <div id="liveTotalsList" class="grid grid-cols-2 gap-2"></div>
-            </div>
-
-            <button onclick="openMapModal()" class="w-full py-2 text-xs font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/20 rounded-xl hover:bg-sky-500/20">
-                🗺 Course Map & Distance to Green
-            </button>
-
-            <button onclick="toggleScoreModal(true)" class="w-full py-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20">
-                View Full Score Sheet & Leaderboard 📋
-            </button>
         </section>
-
-        <!-- COURSE MAP MODAL -->
-        <div id="mapModal" class="hidden fixed inset-0 bg-slate-950 z-50 flex flex-col">
-            <div class="max-w-md mx-auto w-full h-full flex flex-col relative">
-                <div class="p-2 bg-slate-900 border-b border-slate-800 flex items-center gap-2 flex-none">
-                    <button onclick="closeMapModal()" class="text-slate-300 text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">✕</button>
-                    <button onclick="mapChangeHole(-1)" class="text-slate-300 text-sm bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">❮</button>
-                    <div class="flex-1 text-center leading-tight">
-                        <div id="mapHoleTitle" class="text-sm font-black text-emerald-400">HOLE 1</div>
-                        <div id="mapHoleSub" class="text-[10px] text-slate-400">Par 4 · HCP 1</div>
-                    </div>
-                    <button onclick="mapChangeHole(1)" class="text-slate-300 text-sm bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">❯</button>
-                    <button id="mapLayerBtn" onclick="toggleMapLayer()" class="text-[11px] text-sky-400 bg-sky-500/10 border border-sky-500/30 px-2 py-1 rounded-lg font-semibold">Street</button>
-                </div>
-
-                <div id="courseMap" class="flex-1"></div>
-
-                <div class="absolute left-2 right-2 bottom-2 z-[1000] bg-slate-900/95 border border-slate-800 rounded-2xl p-3 space-y-1.5" style="margin-bottom: env(safe-area-inset-bottom, 0px);">
-                    <div class="flex text-center">
-                        <div class="flex-1">
-                            <div class="text-[10px] text-slate-400 font-semibold">TO GREEN</div>
-                            <div id="distGreen" class="text-2xl font-black text-emerald-400">—</div>
-                            <div id="distGreenM" class="text-[10px] text-slate-500"></div>
-                        </div>
-                        <div id="targetCols" class="hidden flex-[2] flex">
-                            <div class="flex-1">
-                                <div class="text-[10px] text-slate-400 font-semibold">TO TARGET</div>
-                                <div id="distTarget" class="text-2xl font-black text-amber-400">—</div>
-                                <div id="distTargetM" class="text-[10px] text-slate-500"></div>
-                            </div>
-                            <div class="flex-1">
-                                <div class="text-[10px] text-slate-400 font-semibold">TARGET → GREEN</div>
-                                <div id="distTG" class="text-2xl font-black text-white">—</div>
-                                <div id="distTGM" class="text-[10px] text-slate-500"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="mapHint" class="text-[10px] text-center text-slate-400"></div>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        <button onclick="mapCenterMe()" class="py-1.5 text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-lg">📍 Me</button>
-                        <button onclick="mapCenterGreen()" class="py-1.5 text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-lg">⛳ Green</button>
-                        <button id="mapThirdBtn" onclick="mapThirdAction()" class="py-1.5 text-[11px] font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg">Unpin</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- LARGE HOLE TRANSITION OVERLAY -->
         <div id="holeTransitionOverlay" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 text-center">
@@ -787,7 +774,7 @@
                 document.getElementById('gameScreen').classList.remove('hidden');
                 document.getElementById('btnOpenCourse').classList.add('hidden');
                 document.getElementById('btnViewScore').classList.remove('hidden');
-                document.getElementById('btnMap').classList.remove('hidden');
+                
                 document.getElementById('btnReset').classList.remove('hidden');
                 document.getElementById('headerGameTitle').innerText = state.title;
                 document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
@@ -795,6 +782,7 @@
 
                 history.pushState({ inGame: true }, "");
                 renderHole();
+                showGameMap();
             }
         }
 
@@ -909,7 +897,7 @@
             document.getElementById('gameScreen').classList.remove('hidden');
             document.getElementById('btnOpenCourse').classList.add('hidden');
             document.getElementById('btnViewScore').classList.remove('hidden');
-                document.getElementById('btnMap').classList.remove('hidden');
+                
             document.getElementById('btnReset').classList.remove('hidden');
             document.getElementById('headerGameTitle').innerText = state.title;
             document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
@@ -917,6 +905,7 @@
             history.pushState({ inGame: true }, "");
             saveCurrentGameState();
             renderHole();
+            showGameMap();
         }
 
         function getHoleMultiplier(holeNum) {
@@ -942,84 +931,173 @@
             }
         }
 
+        function holeInfoFor(h) {
+            return state.courseHoles && state.courseHoles[h] ? state.courseHoles[h] : { par: 4, handicapIndex: h };
+        }
+
+        function scoreLabel(score, par) {
+            if (!score) return '';
+            const d = score - par;
+            return { '-3': 'Albatross', '-2': 'Eagle', '-1': 'Birdie', '0': 'Par', '1': 'Bogey', '2': 'Double', '3': 'Triple' }[d] || (d > 0 ? `+${d}` : `${d}`);
+        }
+
         function renderHole() {
             const h = state.currentHole;
-            document.getElementById('holeDisplay').innerText = `HOLE ${h} / 18`;
-
-            const holeInfo = state.courseHoles && state.courseHoles[h] ? state.courseHoles[h] : { par: 4, handicapIndex: h };
-            document.getElementById('displayPar').innerText = `Par: ${holeInfo.par}`;
-            document.getElementById('displayHcpIndex').innerText = `HCP Index: ${holeInfo.handicapIndex}`;
-            document.getElementById('displayYards').innerText = holeInfo.yards ? `${holeInfo.yards} yd` : '';
-            document.getElementById('displayYards').classList.toggle('hidden', !holeInfo.yards);
-            document.getElementById('displayYardsSep').classList.toggle('hidden', !holeInfo.yards);
-
+            const holeInfo = holeInfoFor(h);
             const mult = getHoleMultiplier(h);
-            const banner = document.getElementById('multiplierBanner');
 
+            document.getElementById('holeDisplay').innerText = `HOLE ${h}`;
+            document.getElementById('holeSub').innerText =
+                `Par ${holeInfo.par} · HCP ${holeInfo.handicapIndex}${holeInfo.yards ? ` · ${holeInfo.yards} yd` : ''}`;
+            document.getElementById('sheetTitle').innerText =
+                `HOLE ${h} · Par ${holeInfo.par}${mult > 1 ? ` · ${mult}x` : ''}`;
+
+            const banner = document.getElementById('multiplierBanner');
             if (mult === 1) {
-                banner.className = "mt-1 py-1 px-3 rounded-lg font-bold text-xs bg-slate-800 text-slate-300 border border-slate-700";
-                banner.innerHTML = `REGULAR HOLE (1pt per win)`;
-            } else if (mult === 2) {
-                banner.className = "mt-1 py-1 px-3 rounded-lg font-extrabold text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40";
-                banner.innerHTML = `🔥 DOUBLE HOLE (2pts per win)`;
+                banner.className = 'hidden';
             } else {
-                banner.className = "mt-1 py-1 px-3 rounded-lg font-black text-xs bg-rose-500/20 text-rose-400 border border-rose-500/40";
-                banner.innerHTML = `🚨🚨 ${mult}x MULTIPLIER (${mult}pts per win)`;
+                banner.className = `px-1.5 py-0.5 rounded-md text-[10px] font-black ${mult === 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`;
+                banner.innerText = mult === 2 ? '🔥 2x' : `🚨 ${mult}x`;
             }
 
+            // Score sheet rows
             const container = document.getElementById('holeScoreInputs');
-            container.innerHTML = '';
-
             const currentHoleSticks = state.holeSticks[h] || [];
-
-            state.players.forEach((pName, pIdx) => {
-                const skinScore = state.scores[h][pIdx] || 0;
-                const scratchVal = state.scratchScores[h][pIdx] || '';
-                const isWinner = skinScore > 0;
-                const stick = currentHoleSticks[pIdx];
-
-                const bonus = getPlayerHoleHandicapBonus(pIdx, h);
-                const hasHcpBadge = bonus > 0;
-
-                container.innerHTML += `
-                        <div class="flex items-center justify-between bg-slate-950 border ${isWinner ? 'border-emerald-500/60 bg-emerald-500/5' : 'border-slate-800'} rounded-lg px-2.5 py-1">
-                            <div class="flex items-center gap-1.5 truncate">
-                                <button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold transition flex items-center gap-0.5 ${isWinner ? 'bg-emerald-500 text-slate-950 shadow-sm' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'}">
-                                    WIN
-                                </button>
-                                ${getStickBadgeHTML(stick)}
-                                <span class="font-bold text-white text-xs truncate max-w-[80px]">${pName}</span>
-                                ${hasHcpBadge ? '<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded">(-1)</span>' : ''}
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <div class="flex items-center bg-slate-900 border border-slate-700 px-2 py-0.5 rounded-md">
-                                    <span class="text-[9px] text-slate-400 mr-1 font-bold">Scratch</span>
-                                    <input type="number" value="${scratchVal}" onfocus="this.select()" onchange="updateScratchScore(${pIdx}, this.value)" placeholder="0"
-                                        class="w-7 bg-transparent text-amber-400 text-xs font-black text-center focus:outline-none">
+            container.innerHTML = state.players.map((pName, pIdx) => {
+                const skin = state.scores[h][pIdx] || 0;
+                const scratch = state.scratchScores[h][pIdx] || 0;
+                const isWinner = skin > 0;
+                const strokes = getPlayerHoleHandicapBonus(pIdx, h);
+                return `
+                        <div class="flex items-center gap-2 bg-slate-950 border ${isWinner ? 'border-emerald-500/60' : 'border-slate-800'} rounded-xl px-2.5 py-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    ${getStickBadgeHTML(currentHoleSticks[pIdx])}
+                                    <span class="font-bold text-white text-sm truncate">${escapeHtml(pName)}</span>
+                                    ${strokes > 0 ? `<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded shrink-0">-${strokes}</span>` : ''}
                                 </div>
-                                <div class="flex items-center bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded-md">
-                                    <span class="text-[9px] text-slate-400 mr-0.5 font-bold">Skin</span>
-                                    <input type="number" value="${skinScore}" onfocus="this.select()" onchange="updateManualSkinScore(${pIdx}, this.value)" placeholder="0"
-                                        class="w-7 bg-transparent text-emerald-400 text-xs font-black text-center focus:outline-none">
+                                <div class="flex items-center gap-1.5 mt-1">
+                                    <button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">WIN</button>
+                                    <button onclick="editSkinPoints(${pIdx})" class="text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">${isWinner ? '+' + skin + ' pts' : '0 pts'}</button>
+                                    <span class="text-[10px] text-slate-500">${scoreLabel(scratch, holeInfo.par)}</span>
                                 </div>
                             </div>
-                        </div>
-                    `;
-            });
+                            <button onclick="stepScore(${pIdx}, -1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">−</button>
+                            <div class="w-10 text-center text-3xl font-black ${scratch ? 'text-amber-400' : 'text-slate-600'}">${scratch || '–'}</div>
+                            <button onclick="stepScore(${pIdx}, 1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">+</button>
+                        </div>`;
+            }).join('');
 
             const inlineBox = document.getElementById('inlineTeamResult');
-            const hasScore = state.players.some((_, idx) => (state.scores[h][idx] || 0) > 0);
-            const isTie = state.ties[h];
             const hasSticks = state.holeSticks[h] && state.holeSticks[h].length > 0;
-
-            if (hasSticks || hasScore || isTie) {
+            if (hasSticks) {
                 updateInlineTeamResultBox(h);
+            } else if (state.ties[h]) {
+                inlineBox.innerHTML = `<div class="text-center text-amber-400 font-bold">🤝 Tie (Carryover)</div>`;
+                inlineBox.classList.remove('hidden');
             } else {
                 inlineBox.classList.add('hidden');
             }
 
             renderLiveTotals();
+
+            if (leafletMap && mapHole !== h) {
+                mapHole = h;
+                targetLatLng = null;
+                centerMapForHole(false);
+            }
+            mapHole = h;
+            renderMap();
             saveCurrentGameState();
+        }
+
+        // Minimal player overlay on the map.
+        function renderLiveTotals() {
+            const { totals } = calculateTotals();
+            const h = state.currentHole;
+            const sticks = state.holeSticks[h] || [];
+            const strip = document.getElementById('playerStrip');
+            strip.style.gridTemplateColumns = `repeat(${state.players.length}, minmax(0, 1fr))`;
+            strip.innerHTML = state.players.map((pName, pIdx) => {
+                const scratch = state.scratchScores[h][pIdx] || 0;
+                const skin = state.scores[h][pIdx] || 0;
+                return `
+                        <button onclick="openScoreSheet()" class="min-w-0 rounded-xl bg-slate-950/80 border ${skin > 0 ? 'border-emerald-500/70' : 'border-slate-800'} px-1 py-1 text-center">
+                            <div class="flex items-center justify-center gap-1 min-w-0">
+                                ${getStickBadgeHTML(sticks[pIdx]).replace('w-5 h-5', 'w-4 h-4').replace('text-[10px]', 'text-[9px]')}
+                                <span class="text-[11px] font-bold text-slate-300 truncate">${escapeHtml(pName)}</span>
+                            </div>
+                            <div class="text-xl font-black leading-tight ${scratch ? 'text-amber-400' : 'text-slate-600'}">${scratch || '–'}</div>
+                            <div class="text-[10px] font-bold ${totals[pIdx] > 0 ? 'text-emerald-400' : 'text-slate-500'}">${totals[pIdx]} pts${skin > 0 ? ` <span class="text-emerald-300">(+${skin})</span>` : ''}</div>
+                        </button>`;
+            }).join('');
+        }
+
+        function openScoreSheet() {
+            document.getElementById('gameMenu').classList.add('hidden');
+            document.getElementById('scoreSheet').classList.remove('hidden');
+        }
+
+        function closeScoreSheet() {
+            document.getElementById('scoreSheet').classList.add('hidden');
+        }
+
+        function confirmAndNext() {
+            closeScoreSheet();
+            changeHole(1);
+        }
+
+        function toggleGameMenu() {
+            document.getElementById('gameMenu').classList.toggle('hidden');
+        }
+
+        function stepScore(pIdx, dir) {
+            const h = state.currentHole;
+            const cur = state.scratchScores[h][pIdx] || 0;
+            // First tap on + jumps straight to par.
+            const next = cur === 0 ? (dir > 0 ? holeInfoFor(h).par : 0) : Math.max(0, cur + dir);
+            updateScratchScore(pIdx, next);
+            const drawn = state.holeSticks[h] && state.holeSticks[h].length > 0;
+            const allEntered = state.players.every((_, i) => (state.scratchScores[h][i] || 0) > 0);
+            if (drawn && allEntered) {
+                executeTeamDraw(); // re-scores with the sticks already drawn
+            } else {
+                renderHole();
+            }
+        }
+
+        function editSkinPoints(pIdx) {
+            const val = prompt(`Skin points for ${state.players[pIdx]}`, state.scores[state.currentHole][pIdx] || 0);
+            if (val === null) return;
+            updateManualSkinScore(pIdx, val);
+        }
+
+        function exitToSetup() {
+            if (confirm("Return to setup? Your round is saved and can be resumed.")) {
+                showSetupScreen();
+            }
+        }
+
+        function showGameMap() {
+            if (typeof L === 'undefined') {
+                document.getElementById('mapHint').innerText = 'Map failed to load (offline?). Scoring still works.';
+                return;
+            }
+            if (!leafletMap) initLeafletMap();
+            mapHole = state.currentHole;
+            setTimeout(() => {
+                leafletMap.invalidateSize();
+                centerMapForHole(true);
+                renderMap();
+            }, 50);
+            startGeoWatch();
+        }
+
+        function stopGeoWatch() {
+            if (geoWatchId !== null) {
+                navigator.geolocation.clearWatch(geoWatchId);
+                geoWatchId = null;
+            }
         }
 
         function updateInlineTeamResultBox(h) {
@@ -1140,6 +1218,7 @@
             });
             state.ties[h] = true;
             document.getElementById('inlineTeamResult').classList.add('hidden');
+            closeScoreSheet();
             changeHole(1);
         }
 
@@ -1307,32 +1386,6 @@
             return { totals, scratchTotals, playedCount };
         }
 
-        function renderLiveTotals() {
-            const { totals, playedCount } = calculateTotals();
-            document.getElementById('completedHolesCount').innerText = `${playedCount} / 18 Played`;
-
-            const container = document.getElementById('liveTotalsList');
-            container.innerHTML = '';
-            const currentHoleSticks = state.holeSticks[state.currentHole] || [];
-
-            state.players.forEach((pName, pIdx) => {
-                const tot = totals[pIdx];
-                const stick = currentHoleSticks[pIdx];
-
-                container.innerHTML += `
-                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 flex justify-between items-center">
-                            <div class="flex items-center gap-1.5 truncate">
-                                ${getStickBadgeHTML(stick)}
-                                <span class="text-xs font-semibold text-slate-300 truncate">${pName}</span>
-                            </div>
-                            <span class="text-xs font-bold ${tot > 0 ? 'text-emerald-400' : 'text-slate-400'}">
-                                ${tot} pts
-                            </span>
-                        </div>
-                    `;
-            });
-        }
-
         function toggleScoreModal(show) {
             const modal = document.getElementById('scoreModal');
             if (show) {
@@ -1357,12 +1410,14 @@
 
         function showSetupScreen() {
             saveCurrentGameState();
+            stopGeoWatch();
+            closeScoreSheet();
             document.getElementById('gameScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('setupScreen').classList.remove('hidden');
             document.getElementById('btnOpenCourse').classList.remove('hidden');
             document.getElementById('btnViewScore').classList.add('hidden');
-            document.getElementById('btnMap').classList.add('hidden');
+            
             document.getElementById('btnReset').classList.add('hidden');
             document.getElementById('headerGameTitle').innerText = "TVPC Golf Sticks";
             document.getElementById('headerCourseSub').innerText = "No course selected";
@@ -1376,8 +1431,11 @@
             const historyModal = document.getElementById('historyModal');
             const gameScreen = document.getElementById('gameScreen');
 
-            if (!document.getElementById('mapModal').classList.contains('hidden')) {
-                closeMapModal(true);
+            const sheet = document.getElementById('scoreSheet');
+            if (!sheet.classList.contains('hidden') || !document.getElementById('gameMenu').classList.contains('hidden')) {
+                closeScoreSheet();
+                document.getElementById('gameMenu').classList.add('hidden');
+                history.pushState({ inGame: true }, "");
                 return;
             }
             if (!courseModal.classList.contains('hidden')) {
@@ -1483,6 +1541,8 @@
         }
 
         function showResults() {
+            stopGeoWatch();
+            closeScoreSheet();
             document.getElementById('gameScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.remove('hidden');
             document.getElementById('resultGameTitle').innerText = state.title;
@@ -1620,38 +1680,6 @@
             return Math.round(meters * 1.0936133);
         }
 
-        function openMapModal() {
-            if (typeof L === 'undefined') {
-                alert('Map library failed to load. Check your internet connection.');
-                return;
-            }
-            document.getElementById('mapModal').classList.remove('hidden');
-            history.pushState({ modalOpen: 'map' }, "");
-            mapHole = state.currentHole || 1;
-            targetLatLng = null;
-            if (!leafletMap) initLeafletMap();
-            setTimeout(() => {
-                leafletMap.invalidateSize();
-                centerMapForHole(true);
-                renderMap();
-            }, 50);
-            startGeoWatch();
-            renderMap();
-        }
-
-        function closeMapModal(fromPopState) {
-            // The close button goes through history so the back-button stack stays in sync.
-            if (!fromPopState) {
-                history.back();
-                return;
-            }
-            document.getElementById('mapModal').classList.add('hidden');
-            if (geoWatchId !== null) {
-                navigator.geolocation.clearWatch(geoWatchId);
-                geoWatchId = null;
-            }
-        }
-
         function initLeafletMap() {
             leafletMap = L.map('courseMap', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView(DEFAULT_MAP_CENTER, 12);
             L.control.attribution({ position: 'topright' }).addTo(leafletMap);
@@ -1733,18 +1761,6 @@
             }
         }
 
-        function mapSetHole(n) {
-            if (n < 1 || n > 18) return;
-            mapHole = n;
-            targetLatLng = null;
-            centerMapForHole(false);
-            renderMap();
-        }
-
-        function mapChangeHole(dir) {
-            mapSetHole(mapHole + dir);
-        }
-
         function showMapToast(text) {
             mapToast = text;
             clearTimeout(mapToastTimer);
@@ -1790,7 +1806,7 @@
             usingSatellite = !usingSatellite;
             leafletMap.removeLayer(usingSatellite ? streetLayer : satLayer);
             (usingSatellite ? satLayer : streetLayer).addTo(leafletMap);
-            document.getElementById('mapLayerBtn').innerText = usingSatellite ? 'Street' : 'Satellite';
+            document.getElementById('mapLayerBtn').innerText = usingSatellite ? '🗺 Street map' : '🛰 Satellite';
         }
 
         function setDistance(id, a, b) {
@@ -1802,11 +1818,6 @@
 
         function renderMap() {
             if (!leafletMap) return;
-            const info = state.courseHoles && state.courseHoles[mapHole] ? state.courseHoles[mapHole] : { par: 4, handicapIndex: mapHole };
-            document.getElementById('mapHoleTitle').innerText = `HOLE ${mapHole}`;
-            document.getElementById('mapHoleSub').innerText =
-                `Par ${info.par} · HCP ${info.handicapIndex}${info.yards ? ` · ${info.yards} yd` : ''}`;
-
             const greens = loadGreens();
             const green = greens[mapHole] ? L.latLng(greens[mapHole]) : null;
 
@@ -1816,8 +1827,8 @@
                 const n = parseInt(key, 10);
                 if (n === mapHole) return;
                 L.marker(greens[key], {
-                    icon: L.divIcon({ className: 'hole-pin', html: String(n), iconSize: [24, 24] })
-                }).on('click', () => mapSetHole(n)).addTo(mapOverlay);
+                    icon: L.divIcon({ className: 'hole-pin', html: String(n), iconSize: [24, 24] }), interactive: false
+                }).addTo(mapOverlay);
             });
 
             if (meLatLng && targetLatLng) {
@@ -1855,18 +1866,23 @@
             else if (mapLocError) hint = mapLocError;
             else if (!green) hint = `Long-press the green to pin hole ${mapHole}`;
             else if (!meLatLng) hint = 'Waiting for GPS…';
-            else hint = 'Tap: measure a point · Long-press: move green pin';
+            else hint = 'Tap: measure · Long-press: move green';
             const hintEl = document.getElementById('mapHint');
             hintEl.innerText = hint;
-            hintEl.className = `text-[10px] text-center ${mapLocError && !mapToast ? 'text-rose-400' : mapToast ? 'text-emerald-400' : 'text-slate-400'}`;
+            hintEl.className = `text-[10px] truncate ${mapLocError && !mapToast ? 'text-rose-400' : mapToast ? 'text-emerald-400' : 'text-slate-400'}`;
 
             const third = document.getElementById('mapThirdBtn');
+            const base = 'w-10 h-10 rounded-xl shadow-lg border ';
             if (targetLatLng) {
-                third.innerText = '📌 Pin as Green';
-                third.className = 'py-1.5 text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg';
+                third.innerText = '📌';
+                third.title = 'Pin target as green';
+                third.className = base + 'bg-amber-500/30 border-amber-400/60';
+            } else if (green) {
+                third.innerText = '🗑';
+                third.title = 'Remove green pin';
+                third.className = base + 'bg-slate-900/90 border-slate-700/60';
             } else {
-                third.innerText = 'Unpin';
-                third.className = `py-1.5 text-[11px] font-semibold rounded-lg border ${green ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' : 'text-slate-600 bg-slate-900 border-slate-800'}`;
+                third.className = 'hidden';
             }
         }
 
