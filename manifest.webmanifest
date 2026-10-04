@@ -1,6 +1,6 @@
 {
-  "name": "TVPC PGA",
-  "short_name": "TVPC PGA",
+  "name": "BirdieBuddies",
+  "short_name": "BirdieBuddies",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
