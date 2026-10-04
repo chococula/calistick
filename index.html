@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TVPC PGA</title>
+    <title>TVPC Golf</title>
 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="TVPC PGA">
+    <meta name="apple-mobile-web-app-title" content="TVPC Golf">
     <meta name="theme-color" content="#020617">
-    <meta name="application-name" content="TVPC PGA">
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet: course map (satellite tiles from Esri, street tiles from OSM; no API key needed) -->
@@ -113,7 +108,7 @@
             <div class="flex items-center space-x-2">
                 <span class="text-xl">⛳</span>
                 <div>
-                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC PGA</h1>
+                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC Golf</h1>
                     <p class="text-[10px] text-slate-400" id="headerCourseSub">코스 미선택</p>
                 </div>
             </div>
@@ -465,7 +460,7 @@
 
     <script>
         let state = {
-            title: "TVPC PGA",
+            title: "TVPC Golf",
             gameType: "stroke",
             courseName: "",
             courseId: "",
@@ -1515,7 +1510,7 @@
             document.getElementById('btnViewScore').classList.add('hidden');
             
             document.getElementById('btnReset').classList.add('hidden');
-            document.getElementById('headerGameTitle').innerText = "TVPC PGA";
+            document.getElementById('headerGameTitle').innerText = "TVPC Golf";
             document.getElementById('headerCourseSub').innerText = "코스 미선택";
             document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "코스 미선택 (위의 ⛳ 코스 버튼)";
             checkActiveGameExists();
