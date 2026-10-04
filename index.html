@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -109,21 +109,21 @@
                 <span class="text-xl">⛳</span>
                 <div>
                     <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC Golf</h1>
-                    <p class="text-[10px] text-slate-400" id="headerCourseSub">No course selected</p>
+                    <p class="text-[10px] text-slate-400" id="headerCourseSub">코스 미선택</p>
                 </div>
             </div>
             <div class="flex gap-1.5 items-center">
                 <button id="btnOpenCourse" onclick="openCourseModal()" class="text-[11px] bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
-                    ⛳ Course
+                    ⛳ 코스
                 </button>
                 <button id="btnHistory" onclick="toggleHistoryModal(true)" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700 font-semibold">
-                    📜 History
+                    📜 기록
                 </button>
                 <button id="btnViewScore" onclick="toggleScoreModal(true)" class="hidden text-[11px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold">
-                    📊 Leaderboard
+                    📊 순위표
                 </button>
                 <button id="btnReset" onclick="confirmReset()" class="hidden text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">
-                    New Game
+                    새 게임
                 </button>
             </div>
         </header>
@@ -133,15 +133,15 @@
             <div class="space-y-4">
                 <div id="resumeGameCard" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex justify-between items-center">
                     <div>
-                        <h3 class="text-xs font-bold text-emerald-400">In-Progress Game Found</h3>
-                        <p class="text-[10px] text-slate-400" id="resumeGameSub">Tap to continue active round</p>
+                        <h3 class="text-xs font-bold text-emerald-400">진행 중인 게임이 있습니다</h3>
+                        <p class="text-[10px] text-slate-400" id="resumeGameSub">이어서 플레이하기</p>
                     </div>
                     <div class="flex gap-1.5 shrink-0">
                         <button onclick="discardActiveGame()" class="bg-slate-800 hover:bg-slate-700 text-rose-400 border border-rose-500/30 text-xs font-bold px-3 py-1.5 rounded-lg">
-                            Discard
+                            삭제
                         </button>
                         <button onclick="resumeActiveGame()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md">
-                            Resume ▶️
+                            이어하기 ▶️
                         </button>
                     </div>
                 </div>
@@ -149,59 +149,59 @@
                 <!-- 선택된 코스 정보 표시 카드 -->
                 <div id="setupCourseBanner" class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
                     <div>
-                        <span class="text-[10px] font-semibold text-slate-400 uppercase">Selected Course & Tee</span>
-                        <div id="setupCourseText" class="text-xs font-bold text-emerald-400 mt-0.5">No course selected (Tap ⛳ Course above)</div>
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase">선택한 코스 · 티</span>
+                        <div id="setupCourseText" class="text-xs font-bold text-emerald-400 mt-0.5">코스 미선택 (위의 ⛳ 코스 버튼)</div>
                     </div>
                     <button onclick="openCourseModal()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 font-semibold">
-                        Change
+                        변경
                     </button>
                 </div>
 
                 <div>
                     <div class="flex justify-between items-center mb-1.5">
-                        <label class="block text-[11px] font-semibold uppercase text-slate-400">Players (2 ~ 4) & Handicaps</label>
+                        <label class="block text-[11px] font-semibold uppercase text-slate-400">플레이어 (2~4명) · 핸디캡</label>
                     </div>
                     <div id="playerInputs" class="space-y-2"></div>
                     <button id="btnAddPlayer" onclick="addPlayerInput()" class="mt-2 w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 hover:text-white hover:border-slate-500 text-xs font-medium transition flex items-center justify-center gap-1">
-                        <span>+</span> Add Player
+                        <span>+</span> 플레이어 추가
                     </button>
                 </div>
 
                 <div class="space-y-1.5">
-                    <label class="block text-[11px] font-semibold uppercase text-slate-400">Game Type</label>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400">게임 방식</label>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="cursor-pointer block">
                             <input type="radio" name="gameType" value="stroke" checked onchange="updateGameTypeUI()" class="mode-option-input hidden">
                             <div class="mode-option-card w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-center transition">
-                                <div class="text-sm font-bold mb-0.5">⛳ Foursome</div>
-                                <div class="text-[10px] text-slate-400 leading-tight">Standard stroke play scorecard</div>
+                                <div class="text-sm font-bold mb-0.5">⛳ 포섬</div>
+                                <div class="text-[10px] text-slate-400 leading-tight">일반 스트로크 스코어카드</div>
                             </div>
                         </label>
                         <label class="cursor-pointer block">
                             <input type="radio" name="gameType" value="sticks" onchange="updateGameTypeUI()" class="mode-option-input hidden">
                             <div class="mode-option-card w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-center transition">
-                                <div class="text-sm font-bold mb-0.5">🎲 Volvik Game</div>
-                                <div class="text-[10px] text-slate-400 leading-tight">R / G / Joker team draw for points</div>
+                                <div class="text-sm font-bold mb-0.5">🎲 볼빅 게임</div>
+                                <div class="text-[10px] text-slate-400 leading-tight">R / G / 조커 팀 뽑기 점수제</div>
                             </div>
                         </label>
                     </div>
                 </div>
 
                 <div id="sticksOptions" class="hidden bg-slate-900/80 p-3 border border-slate-800 rounded-xl space-y-1.5">
-                    <label class="block text-[11px] font-semibold uppercase text-slate-400">Carryover Rule (Tie Option)</label>
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400">무승부 시 이월 규칙</label>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="cursor-pointer block">
                             <input type="radio" name="gameMode" value="add" class="mode-option-input hidden">
                             <div class="mode-option-card w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center transition">
-                                <div class="text-[11px] font-bold mb-0.5">➕ Cumulative</div>
-                                <div class="text-[9px] text-slate-400 leading-tight">Add previous tied hole points</div>
+                                <div class="text-[11px] font-bold mb-0.5">➕ 누적</div>
+                                <div class="text-[9px] text-slate-400 leading-tight">비긴 홀 점수를 더함</div>
                             </div>
                         </label>
                         <label class="cursor-pointer block">
                             <input type="radio" name="gameMode" value="multiply" checked class="mode-option-input hidden">
                             <div class="mode-option-card w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-center transition">
-                                <div class="text-[11px] font-bold mb-0.5">✖️ Double Always</div>
-                                <div class="text-[9px] text-slate-400 leading-tight">Multiply x2 for each tied hole</div>
+                                <div class="text-[11px] font-bold mb-0.5">✖️ 매번 2배</div>
+                                <div class="text-[9px] text-slate-400 leading-tight">비긴 홀마다 2배</div>
                             </div>
                         </label>
                     </div>
@@ -209,7 +209,7 @@
             </div>
 
             <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 text-base transition">
-                Start New Game
+                새 게임 시작
             </button>
         </section>
 
@@ -224,19 +224,19 @@
                         <button onclick="changeHole(-1)" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base font-bold active:scale-95">❮</button>
                         <div class="flex-1 text-center leading-tight min-w-0">
                             <div class="flex items-center justify-center gap-1.5">
-                                <span id="holeDisplay" class="text-base font-black text-emerald-400">HOLE 1</span>
+                                <span id="holeDisplay" class="text-base font-black text-emerald-400">1번 홀</span>
                                 <span id="multiplierBanner"></span>
                             </div>
-                            <div id="holeSub" class="text-[11px] text-slate-300 font-semibold truncate">Par 4 · HCP 1</div>
+                            <div id="holeSub" class="text-[11px] text-slate-300 font-semibold truncate">파 4 · HCP 1</div>
                         </div>
                         <button onclick="changeHole(1)" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base font-bold active:scale-95">❯</button>
                         <button onclick="toggleGameMenu()" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-200 text-base active:scale-95">☰</button>
                     </div>
                     <div id="gameMenu" class="hidden ml-auto w-52 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl text-sm font-semibold">
-                        <button onclick="toggleGameMenu(); toggleScoreModal(true)" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">📊 Leaderboard</button>
-                        <button onclick="toggleGameMenu(); toggleMapLayer()" id="mapLayerBtn" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">🗺 Street map</button>
-                        <button onclick="toggleGameMenu(); exitToSetup()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">⚙️ Back to setup</button>
-                        <button onclick="toggleGameMenu(); confirmReset()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 text-rose-400">🔄 New game</button>
+                        <button onclick="toggleGameMenu(); toggleScoreModal(true)" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">📊 순위표</button>
+                        <button onclick="toggleGameMenu(); toggleMapLayer()" id="mapLayerBtn" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">🗺 일반 지도</button>
+                        <button onclick="toggleGameMenu(); exitToSetup()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">⚙️ 설정으로</button>
+                        <button onclick="toggleGameMenu(); confirmReset()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 text-rose-400">🔄 새 게임</button>
                     </div>
                 </div>
 
@@ -245,13 +245,13 @@
                     <div class="flex items-end gap-1.5">
                         <div class="flex-1 min-w-0 bg-slate-900/90 backdrop-blur border border-slate-700/60 rounded-2xl px-3 py-1.5 shadow-lg">
                             <div class="flex items-baseline gap-2">
-                                <span class="text-[10px] text-slate-400 font-bold">TO GREEN</span>
+                                <span class="text-[10px] text-slate-400 font-bold">그린까지</span>
                                 <span id="distGreen" class="text-2xl font-black text-emerald-400 leading-tight">—</span>
                                 <span id="distGreenM" class="text-[10px] text-slate-500"></span>
                             </div>
                             <div id="targetCols" class="hidden text-[11px] font-semibold text-slate-300">
                                 🎯 <span id="distTarget" class="text-amber-400 font-black"></span><span id="distTargetM" class="hidden"></span>
-                                <span class="text-slate-500">→ green</span> <span id="distTG" class="text-white font-black"></span><span id="distTGM" class="hidden"></span>
+                                <span class="text-slate-500">→ 그린</span> <span id="distTG" class="text-white font-black"></span><span id="distTGM" class="hidden"></span>
                             </div>
                             <div id="mapHint" class="text-[10px] text-slate-400 truncate"></div>
                         </div>
@@ -265,8 +265,8 @@
                     <div class="bg-slate-900/95 backdrop-blur border border-slate-700/60 rounded-2xl p-1.5 shadow-xl">
                         <div id="playerStrip" class="grid gap-1.5"></div>
                         <div class="flex gap-1.5 mt-1.5">
-                            <button onclick="openScoreSheet()" class="flex-1 py-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm active:scale-[0.98]">✏️ Enter Scores</button>
-                            <button onclick="changeHole(1)" class="px-5 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-[0.98]">Next ❯</button>
+                            <button onclick="openScoreSheet()" class="flex-1 py-3 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm active:scale-[0.98]">✏️ 스코어 입력</button>
+                            <button onclick="changeHole(1)" class="px-5 py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-[0.98]">다음 ❯</button>
                         </div>
                     </div>
                 </div>
@@ -277,16 +277,16 @@
                     <div class="relative bg-slate-900 border-t border-slate-700 rounded-t-3xl px-3 pt-2 space-y-2 max-h-[88%] overflow-y-auto animate-pop" style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);">
                         <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto"></div>
                         <div class="flex items-center justify-between">
-                            <div id="sheetTitle" class="font-black text-emerald-400">HOLE 1 · Par 4</div>
-                            <button onclick="closeScoreSheet()" class="text-slate-400 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">Close</button>
+                            <div id="sheetTitle" class="font-black text-emerald-400">1번 홀 · 파 4</div>
+                            <button onclick="closeScoreSheet()" class="text-slate-400 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">닫기</button>
                         </div>
                         <div id="holeScoreInputs" class="space-y-1.5"></div>
                         <div id="sticksControls" class="grid grid-cols-2 gap-2">
-                            <button onclick="executeTeamDraw()" class="py-3 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/30 font-bold text-sm active:scale-95">🎲 Draw Teams</button>
-                            <button onclick="setTieHole()" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-95">🤝 Tie</button>
+                            <button onclick="executeTeamDraw()" class="py-3 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/30 font-bold text-sm active:scale-95">🎲 팀 뽑기</button>
+                            <button onclick="setTieHole()" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-95">🤝 무승부</button>
                         </div>
                         <div id="inlineTeamResult" class="hidden p-2 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1 text-xs"></div>
-                        <button onclick="confirmAndNext()" class="w-full py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-base active:scale-[0.98]">Confirm & Next Hole ➔</button>
+                        <button onclick="confirmAndNext()" class="w-full py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-base active:scale-[0.98]">확인 · 다음 홀 ➔</button>
                     </div>
                 </div>
             </div>
@@ -295,11 +295,11 @@
         <!-- LARGE HOLE TRANSITION OVERLAY -->
         <div id="holeTransitionOverlay" class="hidden fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 text-center">
             <div class="animate-pop bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-8 w-full max-w-xs shadow-2xl shadow-emerald-500/20 space-y-4">
-                <div class="text-slate-400 text-sm font-bold uppercase tracking-wider">Moving To</div>
-                <div id="transitionHoleText" class="text-5xl font-black text-emerald-400 tracking-tight">HOLE 2</div>
-                <div id="transitionHoleInfo" class="text-xs text-slate-300 font-semibold">Par 4 | HCP Index 5</div>
+                <div class="text-slate-400 text-sm font-bold uppercase tracking-wider">다음 홀</div>
+                <div id="transitionHoleText" class="text-5xl font-black text-emerald-400 tracking-tight">2번 홀</div>
+                <div id="transitionHoleInfo" class="text-xs text-slate-300 font-semibold">파 4 | HCP 5</div>
                 <div id="transitionMultText" class="text-base font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl py-2 px-3">
-                    REGULAR HOLE (1pt)
+                    일반 홀 (1점)
                 </div>
             </div>
         </div>
@@ -311,10 +311,10 @@
                 <!-- 1. 헤더 (고정) -->
                 <div class="flex justify-between items-center pb-1 flex-none">
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
-                        <span>⛳</span> Select Golf Course & Tee
+                        <span>⛳</span> 골프장 · 티 선택
                     </h2>
                     <button onclick="closeCourseModal()" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
-                        ✕ Close
+                        ✕ 닫기
                     </button>
                 </div>
 
@@ -322,22 +322,22 @@
                 <div class="flex-1 overflow-y-auto space-y-3 pr-1">
                     <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
                         <div class="flex gap-2">
-                            <input type="text" id="courseSearchInput" placeholder="Enter course name (e.g. Pebble Beach)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-                            <button onclick="searchGolfCourses()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-bold">Search</button>
+                            <input type="text" id="courseSearchInput" placeholder="골프장 이름 (예: 남서울, Pebble Beach)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                            <button onclick="searchGolfCourses()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-bold">검색</button>
                         </div>
 
                         <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
-                            <span class="text-[11px] font-semibold text-slate-400">Search Radius (Mile)</span>
+                            <span class="text-[11px] font-semibold text-slate-400">검색 반경</span>
                             <select id="searchRadiusSelect" class="bg-slate-950 text-white text-xs border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500">
-                                <option value="5" selected>5 Mile</option>
-                                <option value="10">10 Mile</option>
-                                <option value="15">15 Mile</option>
-                                <option value="20">20 Mile</option>
+                                <option value="5" selected>5마일 (8km)</option>
+                                <option value="10">10마일 (16km)</option>
+                                <option value="15">15마일 (24km)</option>
+                                <option value="20">20마일 (32km)</option>
                             </select>
                         </div>
 
                         <button onclick="searchNearbyCourses()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-emerald-400">
-                            📍 Use My GPS Location (Nearby)
+                            📍 내 위치 주변 골프장 찾기
                         </button>
 
                         <!-- 검색 결과 리스트 -->
@@ -348,20 +348,20 @@
                     <div id="teeSelectContainer" class="hidden bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
                         <h3 id="selectedCourseTitle" class="text-xs font-bold text-emerald-400"></h3>
                         <div>
-                            <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1">Select Tee Box</label>
+                            <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1">티 선택</label>
                             <select id="teeSelectDropdown" onchange="renderTeePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"></select>
                         </div>
 
                         <div id="teePreviewBox" class="bg-slate-900 border border-slate-800 rounded-lg p-2.5 space-y-2 text-xs">
                             <div class="flex justify-between items-center text-[11px] text-slate-400 font-bold border-b border-slate-800 pb-1">
-                                <span>TEE DETAILS</span>
-                                <span id="previewRatingInfo" class="text-amber-400">Rating: - / Slope: -</span>
+                                <span>티 정보</span>
+                                <span id="previewRatingInfo" class="text-amber-400">레이팅: - / 슬로프: -</span>
                             </div>
                             <div id="previewHoleTable" class="overflow-x-auto"></div>
                         </div>
 
                         <button onclick="applySelectedCourse()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20">
-                            Apply Course & Tee Data ➔
+                            코스 · 티 적용 ➔
                         </button>
                     </div>
                 </div>
@@ -369,7 +369,7 @@
                 <!-- 3. 하단 Cancel 버튼 (고정) -->
                 <div class="pt-2 flex-none">
                     <button onclick="closeCourseModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-xs">
-                        Cancel / Skip
+                        취소 / 건너뛰기
                     </button>
                 </div>
 
@@ -381,26 +381,26 @@
             <div class="space-y-4 max-w-md mx-auto w-full pb-6">
                 <div class="flex justify-between items-center pt-2">
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
-                        <span>📊</span> Score Sheet & Standings
+                        <span>📊</span> 스코어 시트 · 순위
                     </h2>
                     <button onclick="toggleScoreModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
-                        ✕ Close
+                        ✕ 닫기
                     </button>
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">Live Ranking</h4>
+                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">실시간 순위</h4>
                     <div id="modalStandings" class="grid grid-cols-2 gap-2 text-xs"></div>
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 overflow-x-auto">
-                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">18-Hole Matrix Table</h4>
+                    <h4 class="text-[11px] font-bold text-slate-400 uppercase mb-2">18홀 스코어표</h4>
                     <table class="w-full text-xs text-left border-collapse min-w-[340px]">
                         <thead>
                             <tr class="border-b border-slate-800 text-slate-400" id="matrixHeaderRow">
-                                <th class="py-1.5 px-1">Hole</th>
-                                <th class="py-1.5 px-1 text-center">Par/HDCP</th>
-                                <th class="py-1.5 px-1 text-center">Mult</th>
+                                <th class="py-1.5 px-1">홀</th>
+                                <th class="py-1.5 px-1 text-center">파/HCP</th>
+                                <th class="py-1.5 px-1 text-center">배수</th>
                             </tr>
                         </thead>
                         <tbody id="matrixTableBody" class="divide-y divide-slate-800/50"></tbody>
@@ -409,7 +409,7 @@
                 </div>
 
                 <button onclick="toggleScoreModal(false)" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm">
-                    Back to Hole Game ➔
+                    게임으로 돌아가기 ➔
                 </button>
             </div>
         </div>
@@ -419,10 +419,10 @@
             <div class="space-y-4 max-w-md mx-auto w-full pb-6">
                 <div class="flex justify-between items-center pt-2">
                     <h2 class="text-base font-bold text-white flex items-center gap-2">
-                        <span>📜</span> Match History
+                        <span>📜</span> 경기 기록
                     </h2>
                     <button onclick="toggleHistoryModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
-                        ✕ Close
+                        ✕ 닫기
                     </button>
                 </div>
 
@@ -430,7 +430,7 @@
 
                 <div class="flex gap-2 pt-2">
                     <button onclick="clearAllHistory()" class="w-1/3 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold py-2.5 rounded-xl transition">
-                        Clear All
+                        전체 삭제
                     </button>
                     <button onclick="toggleHistoryModal(false)" class="w-2/3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
                         Close
@@ -443,15 +443,15 @@
         <section id="resultScreen" class="hidden p-4 flex-1 flex flex-col space-y-4">
             <div class="text-center space-y-1">
                 <div class="text-3xl">🏆</div>
-                <h2 class="text-xl font-black text-white" id="resultGameTitle">Final Standings</h2>
-                <p class="text-[11px] text-slate-400">Official Game Results</p>
+                <h2 class="text-xl font-black text-white" id="resultGameTitle">최종 순위</h2>
+                <p class="text-[11px] text-slate-400">경기 결과</p>
             </div>
 
             <div id="finalLeaderboard" class="space-y-2.5"></div>
 
             <div class="pt-2">
                 <button onclick="confirmReset()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm">
-                    Start New Game
+                    새 게임 시작
                 </button>
             </div>
         </section>
@@ -467,7 +467,7 @@
             courseLat: null,
             courseLng: null,
             courseHoles: {},
-            players: ["Player 1", "Player 2", "Player 3", "Player 4"],
+            players: ["플레이어 1", "플레이어 2", "플레이어 3", "플레이어 4"],
             handicaps: [0, 0, 0, 0],
             holeSticks: {},
             mode: "multiply",
@@ -518,7 +518,7 @@
             lastSearchResults = courses;
 
             if (!courses || courses.length === 0) {
-                container.innerHTML = `<div class="text-xs text-slate-500 text-center py-2">No courses found.</div>`;
+                container.innerHTML = `<div class="text-xs text-slate-500 text-center py-2">검색 결과가 없습니다.</div>`;
                 return;
             }
 
@@ -554,9 +554,9 @@
 
         async function searchGolfCourses() {
             const query = document.getElementById('courseSearchInput').value.trim();
-            if (!query) return alert("Please enter a course name.");
+            if (!query) return alert("골프장 이름을 입력하세요.");
             const container = document.getElementById('courseSearchResults');
-            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">Searching...</div>`;
+            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">검색 중...</div>`;
 
             try {
                 let url = `https://api.opengolfapi.org/api/v1/courses/search?q=${encodeURIComponent(query)}`;
@@ -569,14 +569,14 @@
 
                 renderCourseSearchResults(courses);
             } catch (e) {
-                container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">Failed to search courses.</div>`;
+                container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">검색에 실패했습니다.</div>`;
             }
         }
 
         async function searchNearbyCourses() {
-            if (!navigator.geolocation) return alert("Geolocation is not supported by your browser.");
+            if (!navigator.geolocation) return alert("이 브라우저는 위치 기능을 지원하지 않습니다.");
             const container = document.getElementById('courseSearchResults');
-            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">Finding nearby courses via GPS...</div>`;
+            container.innerHTML = `<div class="text-xs text-slate-400 text-center py-2">주변 골프장을 찾는 중...</div>`;
 
             const radiusMiles = parseFloat(document.getElementById('searchRadiusSelect').value) || 5;
 
@@ -599,10 +599,10 @@
 
                     renderCourseSearchResults(courses);
                 } catch (e) {
-                    container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">Failed to fetch GPS courses.</div>`;
+                    container.innerHTML = `<div class="text-xs text-rose-400 text-center py-2">주변 골프장 검색에 실패했습니다.</div>`;
                 }
             }, () => {
-                alert("GPS permission denied or failed.");
+                alert("위치 권한이 거부되었거나 위치를 가져오지 못했습니다.");
                 container.innerHTML = '';
             });
         }
@@ -614,11 +614,11 @@
             container.innerHTML = `
                     <div class="bg-emerald-950/50 border border-emerald-500/50 rounded-xl p-2.5 flex justify-between items-center">
                         <div>
-                            <div class="text-xs font-bold text-emerald-400">⛳ ${cName || 'Selected Course'}</div>
+                            <div class="text-xs font-bold text-emerald-400">⛳ ${cName || '선택한 코스'}</div>
                             ${cLoc ? `<div class="text-[10px] text-slate-400">${cLoc}</div>` : ''}
                         </div>
                         <button onclick="restoreCourseList()" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
-                            Change 🔄
+                            변경 🔄
                         </button>
                     </div>
                 `;
@@ -643,15 +643,15 @@
                 if (tees.length === 0) {
                     const opt = document.createElement('option');
                     opt.value = 0;
-                    opt.text = "Standard Tee Box";
+                    opt.text = "기본 티";
                     select.appendChild(opt);
                 } else {
                     tees.forEach((tee, idx) => {
                         const opt = document.createElement('option');
                         opt.value = idx;
-                        const teeName = tee.tee_name || tee.name || `Tee ${idx + 1}`;
+                        const teeName = tee.tee_name || tee.name || `티 ${idx + 1}`;
                         const par = tee.par || activeCourseData.par || 72;
-                        opt.text = `${teeName} (Par ${par})`;
+                        opt.text = `${teeName} (파 ${par})`;
                         select.appendChild(opt);
                     });
                 }
@@ -659,7 +659,7 @@
                 document.getElementById('teeSelectContainer').classList.remove('hidden');
                 renderTeePreview();
             } catch (e) {
-                alert("Failed to load tee and scorecard details.");
+                alert("티 · 스코어카드 정보를 불러오지 못했습니다.");
             }
         }
 
@@ -676,13 +676,13 @@
 
             const rating = selectedTee ? (selectedTee.course_rating || selectedTee.rating || 'N/A') : 'N/A';
             const slope = selectedTee ? (selectedTee.slope_rating || selectedTee.slope || 'N/A') : 'N/A';
-            document.getElementById('previewRatingInfo').innerText = `Rating: ${rating} / Slope: ${slope}`;
+            document.getElementById('previewRatingInfo').innerText = `레이팅: ${rating} / 슬로프: ${slope}`;
 
             const holes = activeCourseData.holesList || activeCourseData.holes || [];
             const holeTable = document.getElementById('previewHoleTable');
 
-            let trHoles = '<tr class="text-slate-400 font-bold border-b border-slate-800"><td class="pr-2">Hole</td>';
-            let trPar = '<tr><td class="pr-2 font-semibold text-slate-300">Par</td>';
+            let trHoles = '<tr class="text-slate-400 font-bold border-b border-slate-800"><td class="pr-2">홀</td>';
+            let trPar = '<tr><td class="pr-2 font-semibold text-slate-300">파</td>';
             let trHcp = '<tr><td class="pr-2 font-semibold text-amber-400">HCP</td>';
 
             for (let i = 1; i <= 18; i++) {
@@ -737,7 +737,7 @@
             document.getElementById('headerCourseSub').innerText = fullCourseText;
             document.getElementById('setupCourseText').innerText = fullCourseText;
 
-            alert(`✅ Course Data Applied!\n\nCourse: ${state.courseName}\nTee: ${teeName}\n18-Hole Par & HCP Data Ready.`);
+            alert(`✅ 코스 적용 완료!\n\n코스: ${state.courseName}\n티: ${teeName}\n18홀 파 · HCP 정보 준비됨.`);
 
             closeCourseModal();
             document.getElementById('teeSelectContainer').classList.add('hidden');
@@ -767,7 +767,7 @@
             if (savedState) {
                 try {
                     const parsed = JSON.parse(savedState);
-                    document.getElementById('resumeGameSub').innerText = `${parsed.title} (Hole ${parsed.currentHole})`;
+                    document.getElementById('resumeGameSub').innerText = `${parsed.title} (${parsed.currentHole}번 홀)`;
                     card.classList.remove('hidden');
                 } catch (e) {
                     card.classList.add('hidden');
@@ -778,7 +778,7 @@
         }
 
         function discardActiveGame() {
-            if (!confirm("Discard the in-progress game? Its scores will be deleted.")) return;
+            if (!confirm("진행 중인 게임을 삭제할까요? 스코어가 모두 지워집니다.")) return;
             localStorage.removeItem('tvpc_golf_active_game');
             checkActiveGameExists();
         }
@@ -800,8 +800,8 @@
                 
                 document.getElementById('btnReset').classList.remove('hidden');
                 document.getElementById('headerGameTitle').innerText = state.title;
-                document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
-                document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected";
+                document.getElementById('headerCourseSub').innerText = state.courseName || "코스 미지정";
+                document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "코스 미선택";
 
                 history.pushState({ inGame: true }, "");
                 renderHole();
@@ -827,7 +827,7 @@
                 div.innerHTML = `
                         <span class="text-[11px] font-bold text-slate-500 w-3">${index + 1}</span>
                         <div class="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
-                            <input type="text" value="${escapeHtml(name)}" onfocus="this.select()" onchange="updatePlayerName(${index}, this.value)" placeholder="Enter name"
+                            <input type="text" value="${escapeHtml(name)}" onfocus="this.select()" onchange="updatePlayerName(${index}, this.value)" placeholder="이름 입력"
                                 class="flex-1 bg-transparent text-white text-xs focus:outline-none font-medium">
                         </div>
                         <div class="w-16 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 focus-within:border-emerald-500">
@@ -846,7 +846,7 @@
         }
 
         function updatePlayerName(index, val) {
-            state.players[index] = val.trim() || `Player ${index + 1}`;
+            state.players[index] = val.trim() || `플레이어 ${index + 1}`;
         }
 
         function updatePlayerHandicap(index, val) {
@@ -856,7 +856,7 @@
 
         function addPlayerInput() {
             if (state.players.length < 4) {
-                state.players.push(`Player ${state.players.length + 1}`);
+                state.players.push(`플레이어 ${state.players.length + 1}`);
                 if (!state.handicaps) state.handicaps = [];
                 state.handicaps.push(0);
                 renderSetupPlayers();
@@ -891,7 +891,7 @@
         function startGame() {
             state.gameType = selectedGameType();
             // Rounds are named after the course; no separate title to type.
-            state.title = state.courseName || 'Golf Round';
+            state.title = state.courseName || '골프 라운드';
             const modeRadios = document.getElementsByName('gameMode');
             for (let radio of modeRadios) {
                 if (radio.checked) {
@@ -922,7 +922,7 @@
                 
             document.getElementById('btnReset').classList.remove('hidden');
             document.getElementById('headerGameTitle').innerText = state.title;
-            document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
+            document.getElementById('headerCourseSub').innerText = state.courseName || "코스 미지정";
 
             history.pushState({ inGame: true }, "");
             saveCurrentGameState();
@@ -997,11 +997,11 @@
                     .sort((a, b) => (a.net - b.net) || (a.strokes - b.strokes))
                     .map(st => ({
                         ...st,
-                        display: `${fmtToPar(st.toPar)} (${st.strokes})${st.hcp ? ` · net ${st.net}` : ''}`
+                        display: `${fmtToPar(st.toPar)} (${st.strokes})${st.hcp ? ` · 넷 ${st.net}` : ''}`
                     }));
             }
             const { totals } = calculateTotals();
-            return state.players.map((name, i) => ({ name, points: totals[i], display: `${totals[i]} pts` }))
+            return state.players.map((name, i) => ({ name, points: totals[i], display: `${totals[i]}점` }))
                 .sort((a, b) => b.points - a.points);
         }
 
@@ -1014,7 +1014,7 @@
         function scoreLabel(score, par) {
             if (!score) return '';
             const d = score - par;
-            return { '-3': 'Albatross', '-2': 'Eagle', '-1': 'Birdie', '0': 'Par', '1': 'Bogey', '2': 'Double', '3': 'Triple' }[d] || (d > 0 ? `+${d}` : `${d}`);
+            return { '-3': '알바트로스', '-2': '이글', '-1': '버디', '0': '파', '1': '보기', '2': '더블보기', '3': '트리플보기' }[d] || (d > 0 ? `+${d}` : `${d}`);
         }
 
         function renderHole() {
@@ -1025,11 +1025,11 @@
             }
             const mult = getHoleMultiplier(h);
 
-            document.getElementById('holeDisplay').innerText = `HOLE ${h}`;
+            document.getElementById('holeDisplay').innerText = `${h}번 홀`;
             document.getElementById('holeSub').innerText =
-                `Par ${holeInfo.par} · HCP ${holeInfo.handicapIndex}${holeInfo.yards ? ` · ${holeInfo.yards} yd` : ''}`;
+                `파 ${holeInfo.par} · HCP ${holeInfo.handicapIndex}${holeInfo.yards ? ` · ${holeInfo.yards} yd` : ''}`;
             document.getElementById('sheetTitle').innerText =
-                `HOLE ${h} · Par ${holeInfo.par}${mult > 1 && !isStroke() ? ` · ${mult}x` : ''}`;
+                `${h}번 홀 · 파 ${holeInfo.par}${mult > 1 && !isStroke() ? ` · ${mult}x` : ''}`;
 
             const banner = document.getElementById('multiplierBanner');
             if (mult === 1 || isStroke()) {
@@ -1056,8 +1056,8 @@
                                     ${strokes > 0 ? `<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded shrink-0">-${strokes}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-1">
-                                    ${isStroke() ? '' : `<button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">WIN</button>
-                                    <span class="flex items-center text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">+<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="${skin}" onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateManualSkinScore(${pIdx}, this.value)" class="w-7 bg-slate-800 border border-slate-700 rounded text-center mx-0.5 focus:outline-none focus:border-emerald-500">pts</span>`}
+                                    ${isStroke() ? '' : `<button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">승</button>
+                                    <span class="flex items-center text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">+<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="${skin}" onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateManualSkinScore(${pIdx}, this.value)" class="w-7 bg-slate-800 border border-slate-700 rounded text-center mx-0.5 focus:outline-none focus:border-emerald-500">점</span>`}
                                     <span class="text-[10px] text-slate-500">${scoreLabel(scratch, holeInfo.par)}</span>
                                 </div>
                             </div>
@@ -1075,7 +1075,7 @@
             } else if (hasSticks) {
                 updateInlineTeamResultBox(h);
             } else if (state.ties[h]) {
-                inlineBox.innerHTML = `<div class="text-center text-amber-400 font-bold">🤝 Tie (Carryover)</div>`;
+                inlineBox.innerHTML = `<div class="text-center text-amber-400 font-bold">🤝 무승부 (이월)</div>`;
                 inlineBox.classList.remove('hidden');
             } else {
                 inlineBox.classList.add('hidden');
@@ -1119,7 +1119,7 @@
                                 <span class="text-[11px] font-bold text-slate-300 truncate">${escapeHtml(pName)}</span>
                             </div>
                             <div class="text-xl font-black leading-tight ${scratch ? 'text-amber-400' : 'text-slate-600'}">${scratch || '–'}</div>
-                            <div class="text-[10px] font-bold ${totals[pIdx] > 0 ? 'text-emerald-400' : 'text-slate-500'}">${totals[pIdx]} pts${skin > 0 ? ` <span class="text-emerald-300">(+${skin})</span>` : ''}</div>
+                            <div class="text-[10px] font-bold ${totals[pIdx] > 0 ? 'text-emerald-400' : 'text-slate-500'}">${totals[pIdx]}점${skin > 0 ? ` <span class="text-emerald-300">(+${skin})</span>` : ''}</div>
                         </button>`;
             }).join('');
         }
@@ -1157,14 +1157,14 @@
         }
 
         function exitToSetup() {
-            if (confirm("Return to setup? Your round is saved and can be resumed.")) {
+            if (confirm("설정 화면으로 갈까요? 라운드는 저장되어 이어서 할 수 있습니다.")) {
                 showSetupScreen();
             }
         }
 
         function showGameMap() {
             if (typeof L === 'undefined') {
-                document.getElementById('mapHint').innerText = 'Map failed to load (offline?). Scoring still works.';
+                document.getElementById('mapHint').innerText = '지도를 불러오지 못했습니다 (오프라인?). 스코어 입력은 가능합니다.';
                 return;
             }
             if (!leafletMap) initLeafletMap();
@@ -1247,20 +1247,20 @@
             const mult = getHoleMultiplier(h);
             let resultMsg = "";
             if (state.ties[h]) {
-                resultMsg = `<span class='text-amber-400 font-bold'>🤝 Tie (Carryover)</span>`;
+                resultMsg = `<span class='text-amber-400 font-bold'>🤝 무승부 (이월)</span>`;
             } else if (redScratchSum < greenScratchSum) {
-                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 Red Team Wins (+${mult} pts)</span>`;
+                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 레드팀 승 (+${mult}점)</span>`;
             } else if (greenScratchSum < redScratchSum) {
-                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 Green Team Wins (+${mult} pts)</span>`;
+                resultMsg = `<span class='text-emerald-400 font-bold'>🏆 그린팀 승 (+${mult}점)</span>`;
             } else {
-                resultMsg = `<span class='text-amber-400 font-bold'>🤝 Tie (Carryover)</span>`;
+                resultMsg = `<span class='text-amber-400 font-bold'>🤝 무승부 (이월)</span>`;
             }
 
             inlineBox.innerHTML = `
-                    <div class="text-[11px] font-semibold text-rose-400">🔴 Red Team (Total: ${redScratchSum})</div>
-                    <div class="text-[10px] text-slate-400 pl-2">${redDetails.join(' | ') || 'None'}</div>
-                    <div class="text-[11px] font-semibold text-emerald-400 mt-1">🟢 Green Team (Total: ${greenScratchSum})</div>
-                    <div class="text-[10px] text-slate-400 pl-2">${greenDetails.join(' | ') || 'None'}</div>
+                    <div class="text-[11px] font-semibold text-rose-400">🔴 레드팀 (합계: ${redScratchSum})</div>
+                    <div class="text-[10px] text-slate-400 pl-2">${redDetails.join(' | ') || '없음'}</div>
+                    <div class="text-[11px] font-semibold text-emerald-400 mt-1">🟢 그린팀 (합계: ${greenScratchSum})</div>
+                    <div class="text-[10px] text-slate-400 pl-2">${greenDetails.join(' | ') || '없음'}</div>
                     <div class="pt-1.5 mt-1 border-t border-slate-800 text-center text-xs">
                         ${resultMsg}
                     </div>
@@ -1322,7 +1322,7 @@
             });
 
             if (!allEntered) {
-                alert("Please enter a valid scratch score (1 or greater) for all players before drawing teams.");
+                alert("팀을 뽑기 전에 모든 플레이어의 스코어(1 이상)를 입력하세요.");
                 return;
             }
 
@@ -1417,7 +1417,7 @@
                 const isTie = state.ties[h];
 
                 if (!hasScore && !isTie) {
-                    const confirmMove = confirm("No score entered for this hole. Move to next hole?");
+                    const confirmMove = confirm("이 홀에 결과가 없습니다. 다음 홀로 갈까요?");
                     if (!confirmMove) return;
                 }
             }
@@ -1442,12 +1442,12 @@
             const mult = getHoleMultiplier(targetHole);
             const holeInfo = state.courseHoles && state.courseHoles[targetHole] ? state.courseHoles[targetHole] : { par: 4, handicapIndex: targetHole };
 
-            holeText.innerText = `HOLE ${targetHole}`;
-            holeInfoText.innerText = `Par ${holeInfo.par} | HCP Index ${holeInfo.handicapIndex}`;
+            holeText.innerText = `${targetHole}번 홀`;
+            holeInfoText.innerText = `파 ${holeInfo.par} | HCP ${holeInfo.handicapIndex}`;
 
-            if (mult === 1) multText.innerText = "REGULAR HOLE (1pt)";
-            else if (mult === 2) multText.innerText = "🔥 DOUBLE HOLE (2pts)";
-            else multText.innerText = `🚨🚨 ${mult}x MULTIPLIER (${mult}pts)`;
+            if (mult === 1) multText.innerText = "일반 홀 (1점)";
+            else if (mult === 2) multText.innerText = "🔥 더블 홀 (2점)";
+            else multText.innerText = `🚨🚨 ${mult}배 홀 (${mult}점)`;
 
             overlay.classList.remove('hidden');
 
@@ -1511,8 +1511,8 @@
             
             document.getElementById('btnReset').classList.add('hidden');
             document.getElementById('headerGameTitle').innerText = "TVPC Golf";
-            document.getElementById('headerCourseSub').innerText = "No course selected";
-            document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected (Tap ⛳ Course above)";
+            document.getElementById('headerCourseSub').innerText = "코스 미선택";
+            document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "코스 미선택 (위의 ⛳ 코스 버튼)";
             checkActiveGameExists();
         }
 
@@ -1542,7 +1542,7 @@
                 return;
             }
             if (!gameScreen.classList.contains('hidden')) {
-                if (confirm("Are you sure you want to stop the game and return to setup?")) {
+                if (confirm("게임을 멈추고 설정 화면으로 갈까요?")) {
                     showSetupScreen();
                 } else {
                     history.pushState({ inGame: true }, "");
@@ -1559,8 +1559,8 @@
                         </div>`).join('');
 
             document.getElementById('matrixHeaderRow').innerHTML = `
-                    <th class="py-1.5 px-1 font-medium w-10 text-center">Hole</th>
-                    <th class="py-1.5 px-1 font-medium text-center">Par/HDCP</th>
+                    <th class="py-1.5 px-1 font-medium w-10 text-center">홀</th>
+                    <th class="py-1.5 px-1 font-medium text-center">파/HCP</th>
                 ` + state.players.map(p => `<th class="py-1.5 px-1 font-medium text-center truncate max-w-[60px]">${escapeHtml(p)}</th>`).join('');
 
             let rows = '';
@@ -1586,9 +1586,9 @@
                         ${stats.map(st => `<td class="py-2 px-1 text-center font-mono ${cls}">${f(st)}</td>`).join('')}
                     </tr>`;
             document.getElementById('matrixTableFooter').innerHTML =
-                footRow('Strokes', st => st.strokes, 'text-white') +
-                footRow('To Par', st => fmtToPar(st.toPar), 'text-emerald-400') +
-                (anyHcp ? footRow('Net', st => st.net, 'text-amber-400') : '');
+                footRow('타수', st => st.strokes, 'text-white') +
+                footRow('파 대비', st => fmtToPar(st.toPar), 'text-emerald-400') +
+                (anyHcp ? footRow('넷', st => st.net, 'text-amber-400') : '');
         }
 
         function renderMatrixTable() {
@@ -1607,16 +1607,16 @@
                 standingsContainer.innerHTML += `
                         <div class="flex justify-between items-center bg-slate-800/30 border border-slate-800/40 px-2.5 py-1.5 rounded-lg text-xs">
                             <span class="text-slate-300 truncate font-semibold"><strong class="text-slate-500 mr-1">#${rIdx + 1}</strong>${item.name}</span>
-                            <span class="font-bold ${item.pts > 0 ? 'text-emerald-400' : 'text-slate-400'}">${item.pts} pts</span>
+                            <span class="font-bold ${item.pts > 0 ? 'text-emerald-400' : 'text-slate-400'}">${item.pts}점</span>
                         </div>
                     `;
             });
 
             const headerRow = document.getElementById('matrixHeaderRow');
             headerRow.innerHTML = `
-                    <th class="py-1.5 px-1 font-medium w-10 text-center">Hole</th>
-                    <th class="py-1.5 px-1 font-medium text-center">Par/HDCP</th>
-                    <th class="py-1.5 px-1 font-medium text-center">Mult</th>
+                    <th class="py-1.5 px-1 font-medium w-10 text-center">홀</th>
+                    <th class="py-1.5 px-1 font-medium text-center">파/HCP</th>
+                    <th class="py-1.5 px-1 font-medium text-center">배수</th>
                 ` + state.players.map(p => `<th class="py-1.5 px-1 font-medium text-right truncate max-w-[60px] pr-1">${p}</th>`).join('');
 
             const tbody = document.getElementById('matrixTableBody');
@@ -1661,16 +1661,16 @@
                 return `<td class="py-2 px-1 text-right font-mono text-amber-400 pr-1">${scratchTotals[pIdx]}</td>`;
             }).join('');
             const skinTotalCells = state.players.map((_, pIdx) => {
-                return `<td class="py-2 px-1 text-right font-mono text-emerald-400 pr-1">${totals[pIdx]} pts</td>`;
+                return `<td class="py-2 px-1 text-right font-mono text-emerald-400 pr-1">${totals[pIdx]}점</td>`;
             }).join('');
 
             tfoot.innerHTML = `
                     <tr>
-                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">Scratch Total</td>
+                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">타수 합계</td>
                         ${scratchTotalCells}
                     </tr>
                     <tr>
-                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">Skin Points Total</td>
+                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="3">점수 합계</td>
                         ${skinTotalCells}
                     </tr>
                 `;
@@ -1718,7 +1718,7 @@
 
             const newRecord = {
                 id: Date.now(),
-                date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
                 title: state.title,
                 gameType: state.gameType,
                 course: state.courseName || '',
@@ -1742,7 +1742,7 @@
             container.innerHTML = '';
 
             if (historyList.length === 0) {
-                container.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-center text-slate-500 text-xs">No saved match history found.</div>`;
+                container.innerHTML = `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-center text-slate-500 text-xs">저장된 경기 기록이 없습니다.</div>`;
                 return;
             }
 
@@ -1750,12 +1750,12 @@
                 // Records saved before game types existed are Volvik (points) games.
                 const winners = item.winners ||
                     item.standings.filter(s => s.points === item.standings[0].points && s.points > 0).map(w => w.name);
-                const winnerText = winners.length > 0 ? winners.map(escapeHtml).join(', ') : 'No Winner';
-                const typeText = item.gameType === 'stroke' ? '⛳ Foursome' : '🎲 Volvik';
+                const winnerText = winners.length > 0 ? winners.map(escapeHtml).join(', ') : '승자 없음';
+                const typeText = item.gameType === 'stroke' ? '⛳ 포섬' : '🎲 볼빅';
                 const standingsHTML = item.standings.map((s, idx) => `
                         <div class="flex justify-between items-center text-[11px] py-0.5">
                             <span class="text-slate-400">${idx + 1}. ${escapeHtml(s.name)}</span>
-                            <span class="font-bold ${winners.includes(s.name) ? 'text-emerald-400' : 'text-slate-400'}">${s.display || s.points + ' pts'}</span>
+                            <span class="font-bold ${winners.includes(s.name) ? 'text-emerald-400' : 'text-slate-400'}">${s.display || s.points + '점'}</span>
                         </div>
                     `).join('');
 
@@ -1785,7 +1785,7 @@
         }
 
         function clearAllHistory() {
-            if (confirm("Are you sure you want to delete all match history?")) {
+            if (confirm("경기 기록을 모두 삭제할까요?")) {
                 localStorage.removeItem('tvpc_golf_history');
                 renderHistoryList();
             }
@@ -1874,7 +1874,7 @@
 
         function startGeoWatch() {
             if (!navigator.geolocation) {
-                mapLocError = 'GPS is not supported by this browser.';
+                mapLocError = '이 브라우저는 GPS를 지원하지 않습니다.';
                 return;
             }
             if (geoWatchId !== null) return;
@@ -1888,7 +1888,7 @@
                 }
                 renderMap();
             }, err => {
-                mapLocError = err.code === 1 ? 'Location permission denied.' : 'GPS signal unavailable.';
+                mapLocError = err.code === 1 ? '위치 권한이 거부되었습니다.' : 'GPS 신호를 잡을 수 없습니다.';
                 renderMap();
             }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
         }
@@ -2075,7 +2075,7 @@
             greens[mapHole] = [latlng.lat, latlng.lng];
             saveGreens(greens);
             targetLatLng = null;
-            showMapToast(`✅ Hole ${mapHole} green pinned`);
+            showMapToast(`✅ ${mapHole}번 홀 그린 지정됨`);
             renderMap();
         }
 
@@ -2086,7 +2086,7 @@
             }
             const greens = loadGreens();
             if (!greens[mapHole]) return;
-            if (confirm(`Remove the green pin for hole ${mapHole}?`)) {
+            if (confirm(`${mapHole}번 홀 그린 핀을 지울까요?`)) {
                 delete greens[mapHole];
                 saveGreens(greens);
                 renderMap();
@@ -2105,7 +2105,7 @@
             usingSatellite = !usingSatellite;
             leafletMap.removeLayer(usingSatellite ? streetLayer : satLayer);
             (usingSatellite ? satLayer : streetLayer).addTo(leafletMap);
-            document.getElementById('mapLayerBtn').innerText = usingSatellite ? '🗺 Street map' : '🛰 Satellite';
+            document.getElementById('mapLayerBtn').innerText = usingSatellite ? '🗺 일반 지도' : '🛰 위성 지도';
         }
 
         function setDistance(id, a, b) {
@@ -2172,13 +2172,13 @@
 
             let hint;
             if (mapToast) hint = mapToast;
-            else if (osmLoading) hint = 'Loading hole layout…';
-            else if (osmFailed && !green) hint = 'Hole layout server busy — retrying…';
+            else if (osmLoading) hint = '홀 정보 불러오는 중…';
+            else if (osmFailed && !green) hint = '홀 정보 서버 혼잡 — 다시 시도 중…';
             else if (mapLocError) hint = mapLocError;
-            else if (!green) hint = `Long-press the green to pin hole ${mapHole}`;
-            else if (away) hint = "You're away from the course — distances paused";
-            else if (!meLatLng) hint = 'Waiting for GPS…';
-            else hint = 'Tap: measure · Long-press: move green';
+            else if (!green) hint = `그린을 길게 눌러 ${mapHole}번 홀 그린 지정`;
+            else if (away) hint = '골프장 밖에 있어 거리 표시를 멈췄습니다';
+            else if (!meLatLng) hint = 'GPS 신호 기다리는 중…';
+            else hint = '탭: 거리 측정 · 길게 누르기: 그린 위치 변경';
             const hintEl = document.getElementById('mapHint');
             hintEl.innerText = hint;
             hintEl.className = `text-[10px] truncate ${mapLocError && !mapToast ? 'text-rose-400' : mapToast ? 'text-emerald-400' : 'text-slate-400'}`;
@@ -2187,11 +2187,11 @@
             const base = 'w-10 h-10 rounded-xl shadow-lg border ';
             if (targetLatLng) {
                 third.innerText = '📌';
-                third.title = 'Pin target as green';
+                third.title = '목표 지점을 그린으로 지정';
                 third.className = base + 'bg-amber-500/30 border-amber-400/60';
             } else if (pinned) {
                 third.innerText = '🗑';
-                third.title = 'Remove green pin';
+                third.title = '그린 핀 삭제';
                 third.className = base + 'bg-slate-900/90 border-slate-700/60';
             } else {
                 third.className = 'hidden';
@@ -2199,7 +2199,7 @@
         }
 
         function confirmReset() {
-            if (confirm("Start a new game? Any active game data will be cleared.")) {
+            if (confirm("새 게임을 시작할까요? 진행 중인 게임은 삭제됩니다.")) {
                 localStorage.removeItem('tvpc_golf_active_game');
                 location.reload();
             }
