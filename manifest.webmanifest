@@ -1,6 +1,6 @@
 {
-  "name": "TVPC Golf",
-  "short_name": "TVPC Golf",
+  "name": "TVPC PGA",
+  "short_name": "TVPC PGA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

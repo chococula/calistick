@@ -1,4 +1,4 @@
-# TVPC Golf Sticks + Course Map
+# TVPC PGA
 
 Golf Sticks skins scorecard (R/G/Joker team draw, handicap strokes, tie carryover multipliers) with a satellite course map.
 
