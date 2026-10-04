@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TVPC Golf Sticks</title>
+    <title>TVPC Golf</title>
 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -106,7 +106,7 @@
             <div class="flex items-center space-x-2">
                 <span class="text-xl">⛳</span>
                 <div>
-                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC Golf Sticks</h1>
+                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">TVPC Golf</h1>
                     <p class="text-[10px] text-slate-400" id="headerCourseSub">No course selected</p>
                 </div>
             </div>
@@ -157,7 +157,7 @@
 
                 <div>
                     <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Game Title</label>
-                    <input type="text" id="gameTitleInput" value="TVPC Golf Sticks" onfocus="this.select()" placeholder="Enter Game Title" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium">
+                    <input type="text" id="gameTitleInput" value="TVPC Golf" onfocus="this.select()" placeholder="Enter Game Title" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium">
                 </div>
 
                 <div>
@@ -170,7 +170,27 @@
                     </button>
                 </div>
 
-                <div class="bg-slate-900/80 p-3 border border-slate-800 rounded-xl space-y-1.5">
+                <div class="space-y-1.5">
+                    <label class="block text-[11px] font-semibold uppercase text-slate-400">Game Type</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="gameType" value="stroke" checked onchange="updateGameTypeUI()" class="mode-option-input hidden">
+                            <div class="mode-option-card w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-center transition">
+                                <div class="text-sm font-bold mb-0.5">⛳ Foursome</div>
+                                <div class="text-[10px] text-slate-400 leading-tight">Standard stroke play scorecard</div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="gameType" value="sticks" onchange="updateGameTypeUI()" class="mode-option-input hidden">
+                            <div class="mode-option-card w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-center transition">
+                                <div class="text-sm font-bold mb-0.5">🎲 Volvik Game</div>
+                                <div class="text-[10px] text-slate-400 leading-tight">R / G / Joker team draw for points</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="sticksOptions" class="hidden bg-slate-900/80 p-3 border border-slate-800 rounded-xl space-y-1.5">
                     <label class="block text-[11px] font-semibold uppercase text-slate-400">Carryover Rule (Tie Option)</label>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="cursor-pointer block">
@@ -264,7 +284,7 @@
                             <button onclick="closeScoreSheet()" class="text-slate-400 text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">Close</button>
                         </div>
                         <div id="holeScoreInputs" class="space-y-1.5"></div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div id="sticksControls" class="grid grid-cols-2 gap-2">
                             <button onclick="executeTeamDraw()" class="py-3 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/30 font-bold text-sm active:scale-95">🎲 Draw Teams</button>
                             <button onclick="setTieHole()" class="py-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm active:scale-95">🤝 Tie</button>
                         </div>
@@ -443,7 +463,8 @@
 
     <script>
         let state = {
-            title: "TVPC Golf Sticks",
+            title: "TVPC Golf",
+            gameType: "stroke",
             courseName: "",
             courseId: "",
             courseLat: null,
@@ -773,6 +794,7 @@
                 if (!state.handicaps) state.handicaps = state.players.map(() => 0);
                 if (!state.scratchScores) state.scratchScores = Array.from({ length: 19 }, () => state.players.map(() => 0));
                 if (!state.courseHoles) state.courseHoles = {};
+                if (!state.gameType) state.gameType = 'sticks';
 
                 document.getElementById('setupScreen').classList.add('hidden');
                 document.getElementById('gameScreen').classList.remove('hidden');
@@ -856,7 +878,22 @@
             localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
         }
 
+        function isStroke() {
+            return state.gameType === 'stroke';
+        }
+
+        function selectedGameType() {
+            const r = document.querySelector('input[name="gameType"]:checked');
+            return r ? r.value : 'stroke';
+        }
+
+        function updateGameTypeUI() {
+            document.getElementById('sticksOptions').classList.toggle('hidden', selectedGameType() !== 'sticks');
+        }
+
         function startGame() {
+            state.gameType = selectedGameType();
+            state.title = document.getElementById('gameTitleInput').value.trim() || 'TVPC Golf';
             const modeRadios = document.getElementsByName('gameMode');
             for (let radio of modeRadios) {
                 if (radio.checked) {
@@ -922,6 +959,60 @@
             return state.courseHoles && state.courseHoles[h] ? state.courseHoles[h] : { par: 4, handicapIndex: h };
         }
 
+        function fmtToPar(d) {
+            return d === 0 ? 'E' : (d > 0 ? `+${d}` : `${d}`);
+        }
+
+        function scoreColor(score, par) {
+            if (!score) return 'text-slate-600';
+            const d = score - par;
+            return d <= -2 ? 'text-sky-300' : d === -1 ? 'text-emerald-400' : d === 0 ? 'text-white' : d === 1 ? 'text-amber-400' : 'text-rose-400';
+        }
+
+        // Handicap strokes received on a hole (standard allocation by HCP index).
+        function strokesReceived(pIdx, h) {
+            const hcp = state.handicaps[pIdx] || 0;
+            if (hcp <= 0) return 0;
+            return Math.floor(hcp / 18) + (holeInfoFor(h).handicapIndex <= hcp % 18 ? 1 : 0);
+        }
+
+        // Net only counts strokes received on holes played, so mid-round rankings are fair.
+        function strokeStats(pIdx) {
+            let strokes = 0, toPar = 0, holes = 0, received = 0;
+            for (let h = 1; h <= 18; h++) {
+                const sc = (state.scratchScores[h] && state.scratchScores[h][pIdx]) || 0;
+                if (sc > 0) {
+                    strokes += sc;
+                    toPar += sc - holeInfoFor(h).par;
+                    received += strokesReceived(pIdx, h);
+                    holes++;
+                }
+            }
+            const hcp = state.handicaps[pIdx] || 0;
+            return { strokes, toPar, holes, hcp, net: strokes - received };
+        }
+
+        // Ranked standings for either game type; `display` is what lists show.
+        function getStandings() {
+            if (isStroke()) {
+                return state.players.map((name, i) => ({ name, ...strokeStats(i) }))
+                    .sort((a, b) => (a.net - b.net) || (a.strokes - b.strokes))
+                    .map(st => ({
+                        ...st,
+                        display: `${fmtToPar(st.toPar)} (${st.strokes})${st.hcp ? ` · net ${st.net}` : ''}`
+                    }));
+            }
+            const { totals } = calculateTotals();
+            return state.players.map((name, i) => ({ name, points: totals[i], display: `${totals[i]} pts` }))
+                .sort((a, b) => b.points - a.points);
+        }
+
+        function standingsWinners(ranked) {
+            if (!ranked.length) return [];
+            if (isStroke()) return ranked[0].holes > 0 ? ranked.filter(r => r.net === ranked[0].net).map(r => r.name) : [];
+            return ranked.filter(r => r.points === ranked[0].points && r.points > 0).map(r => r.name);
+        }
+
         function scoreLabel(score, par) {
             if (!score) return '';
             const d = score - par;
@@ -940,10 +1031,10 @@
             document.getElementById('holeSub').innerText =
                 `Par ${holeInfo.par} · HCP ${holeInfo.handicapIndex}${holeInfo.yards ? ` · ${holeInfo.yards} yd` : ''}`;
             document.getElementById('sheetTitle').innerText =
-                `HOLE ${h} · Par ${holeInfo.par}${mult > 1 ? ` · ${mult}x` : ''}`;
+                `HOLE ${h} · Par ${holeInfo.par}${mult > 1 && !isStroke() ? ` · ${mult}x` : ''}`;
 
             const banner = document.getElementById('multiplierBanner');
-            if (mult === 1) {
+            if (mult === 1 || isStroke()) {
                 banner.className = 'hidden';
             } else {
                 banner.className = `px-1.5 py-0.5 rounded-md text-[10px] font-black ${mult === 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'}`;
@@ -967,20 +1058,23 @@
                                     ${strokes > 0 ? `<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded shrink-0">-${strokes}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-1">
-                                    <button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">WIN</button>
-                                    <button onclick="editSkinPoints(${pIdx})" class="text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">${isWinner ? '+' + skin + ' pts' : '0 pts'}</button>
+                                    ${isStroke() ? '' : `<button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">WIN</button>
+                                    <button onclick="editSkinPoints(${pIdx})" class="text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">${isWinner ? '+' + skin + ' pts' : '0 pts'}</button>`}
                                     <span class="text-[10px] text-slate-500">${scoreLabel(scratch, holeInfo.par)}</span>
                                 </div>
                             </div>
                             <button onclick="stepScore(${pIdx}, -1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">−</button>
-                            <div class="w-10 text-center text-3xl font-black ${scratch ? 'text-amber-400' : 'text-slate-600'}">${scratch || '–'}</div>
+                            <div class="w-10 text-center text-3xl font-black ${isStroke() ? scoreColor(scratch, holeInfo.par) : (scratch ? 'text-amber-400' : 'text-slate-600')}">${scratch || '–'}</div>
                             <button onclick="stepScore(${pIdx}, 1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">+</button>
                         </div>`;
             }).join('');
 
             const inlineBox = document.getElementById('inlineTeamResult');
             const hasSticks = state.holeSticks[h] && state.holeSticks[h].length > 0;
-            if (hasSticks) {
+            document.getElementById('sticksControls').classList.toggle('hidden', isStroke());
+            if (isStroke()) {
+                inlineBox.classList.add('hidden');
+            } else if (hasSticks) {
                 updateInlineTeamResultBox(h);
             } else if (state.ties[h]) {
                 inlineBox.innerHTML = `<div class="text-center text-amber-400 font-bold">🤝 Tie (Carryover)</div>`;
@@ -1011,6 +1105,15 @@
             strip.innerHTML = state.players.map((pName, pIdx) => {
                 const scratch = state.scratchScores[h][pIdx] || 0;
                 const skin = state.scores[h][pIdx] || 0;
+                if (isStroke()) {
+                    const st = strokeStats(pIdx);
+                    return `
+                        <button onclick="openScoreSheet()" class="min-w-0 rounded-xl bg-slate-950/80 border border-slate-800 px-1 py-1 text-center">
+                            <div class="text-[11px] font-bold text-slate-300 truncate">${escapeHtml(pName)}</div>
+                            <div class="text-xl font-black leading-tight ${scoreColor(scratch, holeInfoFor(h).par)}">${scratch || '–'}</div>
+                            <div class="text-[10px] font-bold ${st.toPar < 0 ? 'text-emerald-400' : st.toPar > 0 ? 'text-amber-400' : 'text-slate-300'}">${fmtToPar(st.toPar)} <span class="text-slate-500">· ${st.strokes}</span></div>
+                        </button>`;
+                }
                 return `
                         <button onclick="openScoreSheet()" class="min-w-0 rounded-xl bg-slate-950/80 border ${skin > 0 ? 'border-emerald-500/70' : 'border-slate-800'} px-1 py-1 text-center">
                             <div class="flex items-center justify-center gap-1 min-w-0">
@@ -1310,7 +1413,7 @@
         function changeHole(dir) {
             const h = state.currentHole;
 
-            if (dir > 0) {
+            if (dir > 0 && !isStroke()) {
                 const hasScore = state.players.some((_, idx) => (state.scores[h][idx] || 0) > 0);
                 const isTie = state.ties[h];
 
@@ -1408,7 +1511,7 @@
             document.getElementById('btnViewScore').classList.add('hidden');
             
             document.getElementById('btnReset').classList.add('hidden');
-            document.getElementById('headerGameTitle').innerText = "TVPC Golf Sticks";
+            document.getElementById('headerGameTitle').innerText = "TVPC Golf";
             document.getElementById('headerCourseSub').innerText = "No course selected";
             document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected (Tap ⛳ Course above)";
             checkActiveGameExists();
@@ -1448,7 +1551,52 @@
             }
         });
 
+        function renderStrokeMatrix() {
+            const ranked = getStandings();
+            document.getElementById('modalStandings').innerHTML = ranked.map((item, rIdx) => `
+                        <div class="flex justify-between items-center bg-slate-800/30 border border-slate-800/40 px-2.5 py-1.5 rounded-lg text-xs gap-2">
+                            <span class="text-slate-300 truncate font-semibold"><strong class="text-slate-500 mr-1">#${rIdx + 1}</strong>${escapeHtml(item.name)}</span>
+                            <span class="font-bold text-emerald-400 shrink-0">${item.display}</span>
+                        </div>`).join('');
+
+            document.getElementById('matrixHeaderRow').innerHTML = `
+                    <th class="py-1.5 px-1 font-medium w-10 text-center">Hole</th>
+                    <th class="py-1.5 px-1 font-medium text-center">Par/HDCP</th>
+                ` + state.players.map(p => `<th class="py-1.5 px-1 font-medium text-center truncate max-w-[60px]">${escapeHtml(p)}</th>`).join('');
+
+            let rows = '';
+            for (let h = 1; h <= 18; h++) {
+                const info = holeInfoFor(h);
+                rows += `
+                        <tr class="${state.currentHole === h ? 'bg-emerald-500/10' : ''}">
+                            <td class="py-1.5 px-1 font-medium text-slate-300 text-center">H${h}</td>
+                            <td class="py-1.5 px-1 text-center text-slate-400 font-mono text-[10px]">P${info.par} / ${info.handicapIndex}</td>
+                            ${state.players.map((_, pIdx) => {
+                                const sc = (state.scratchScores[h] && state.scratchScores[h][pIdx]) || 0;
+                                return `<td class="py-1.5 px-1 text-center font-mono font-black ${scoreColor(sc, info.par)}">${sc || '–'}</td>`;
+                            }).join('')}
+                        </tr>`;
+            }
+            document.getElementById('matrixTableBody').innerHTML = rows;
+
+            const stats = state.players.map((_, i) => strokeStats(i));
+            const anyHcp = stats.some(st => st.hcp > 0);
+            const footRow = (label, f, cls) => `
+                    <tr>
+                        <td class="py-2 px-1 text-slate-300 font-bold" colspan="2">${label}</td>
+                        ${stats.map(st => `<td class="py-2 px-1 text-center font-mono ${cls}">${f(st)}</td>`).join('')}
+                    </tr>`;
+            document.getElementById('matrixTableFooter').innerHTML =
+                footRow('Strokes', st => st.strokes, 'text-white') +
+                footRow('To Par', st => fmtToPar(st.toPar), 'text-emerald-400') +
+                (anyHcp ? footRow('Net', st => st.net, 'text-amber-400') : '');
+        }
+
         function renderMatrixTable() {
+            if (isStroke()) {
+                renderStrokeMatrix();
+                return;
+            }
             const { totals, scratchTotals } = calculateTotals();
             const standingsContainer = document.getElementById('modalStandings');
             standingsContainer.innerHTML = '';
@@ -1536,32 +1684,32 @@
             document.getElementById('resultScreen').classList.remove('hidden');
             document.getElementById('resultGameTitle').innerText = state.title;
 
-            const { totals } = calculateTotals();
-            const ranked = state.players.map((name, idx) => ({ name, points: totals[idx] })).sort((a, b) => b.points - a.points);
+            const ranked = getStandings();
+            const winners = standingsWinners(ranked);
 
             const container = document.getElementById('finalLeaderboard');
             container.innerHTML = '';
 
             ranked.forEach((item, index) => {
-                const isWinner = index === 0 && item.points > 0;
+                const isWinner = winners.includes(item.name);
                 container.innerHTML += `
                         <div class="bg-slate-900 border ${isWinner ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-800'} rounded-xl p-3 flex justify-between items-center">
                             <div class="flex items-center space-x-2.5">
                                 <span class="text-base font-black ${index === 0 ? 'text-amber-400' : 'text-slate-500'}">#${index + 1}</span>
-                                <h3 class="font-bold text-white text-sm">${item.name}</h3>
+                                <h3 class="font-bold text-white text-sm">${escapeHtml(item.name)}</h3>
                             </div>
-                            <span class="text-xl font-black ${item.points > 0 ? 'text-emerald-400' : 'text-slate-400'}">
-                                ${item.points} pts
+                            <span class="${isStroke() ? 'text-base' : 'text-xl'} font-black ${isWinner ? 'text-emerald-400' : 'text-slate-300'}">
+                                ${item.display}
                             </span>
                         </div>
                     `;
             });
 
-            saveMatchToHistory(ranked);
+            saveMatchToHistory(ranked, winners);
             localStorage.removeItem('tvpc_golf_active_game');
         }
 
-        function saveMatchToHistory(ranked) {
+        function saveMatchToHistory(ranked, winners) {
             let historyList = [];
             try {
                 historyList = JSON.parse(localStorage.getItem('tvpc_golf_history') || '[]');
@@ -1573,7 +1721,10 @@
                 id: Date.now(),
                 date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
                 title: state.title,
-                standings: ranked
+                gameType: state.gameType,
+                course: state.courseName || '',
+                winners,
+                standings: ranked.map(r => ({ name: r.name, points: r.points, display: r.display }))
             };
 
             historyList.unshift(newRecord);
@@ -1597,12 +1748,15 @@
             }
 
             historyList.forEach(item => {
-                const winners = item.standings.filter(s => s.points === item.standings[0].points && s.points > 0);
-                const winnerText = winners.length > 0 ? winners.map(w => w.name).join(', ') : 'No Winner';
+                // Records saved before game types existed are Volvik (points) games.
+                const winners = item.winners ||
+                    item.standings.filter(s => s.points === item.standings[0].points && s.points > 0).map(w => w.name);
+                const winnerText = winners.length > 0 ? winners.map(escapeHtml).join(', ') : 'No Winner';
+                const typeText = item.gameType === 'stroke' ? '⛳ Foursome' : '🎲 Volvik';
                 const standingsHTML = item.standings.map((s, idx) => `
                         <div class="flex justify-between items-center text-[11px] py-0.5">
-                            <span class="text-slate-400">${idx + 1}. ${s.name}</span>
-                            <span class="font-bold ${s.points > 0 ? 'text-emerald-400' : 'text-slate-500'}">${s.points} pts</span>
+                            <span class="text-slate-400">${idx + 1}. ${escapeHtml(s.name)}</span>
+                            <span class="font-bold ${winners.includes(s.name) ? 'text-emerald-400' : 'text-slate-400'}">${s.display || s.points + ' pts'}</span>
                         </div>
                     `).join('');
 
@@ -1610,8 +1764,8 @@
                         <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-1.5">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h3 class="font-bold text-white text-xs">${item.title}</h3>
-                                    <p class="text-[10px] text-slate-500">${item.date}</p>
+                                    <h3 class="font-bold text-white text-xs">${escapeHtml(item.title)}</h3>
+                                    <p class="text-[10px] text-slate-500">${typeText} · ${item.date}${item.course ? ' · ' + escapeHtml(item.course) : ''}</p>
                                 </div>
                                 <button onclick="deleteHistoryItem(${item.id})" class="text-slate-600 hover:text-rose-400 text-xs px-1 py-0.5">✕</button>
                             </div>
