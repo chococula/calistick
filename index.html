@@ -134,9 +134,14 @@
                         <h3 class="text-xs font-bold text-emerald-400">In-Progress Game Found</h3>
                         <p class="text-[10px] text-slate-400" id="resumeGameSub">Tap to continue active round</p>
                     </div>
-                    <button onclick="resumeActiveGame()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md">
-                        Resume ▶️
-                    </button>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button onclick="discardActiveGame()" class="bg-slate-800 hover:bg-slate-700 text-rose-400 border border-rose-500/30 text-xs font-bold px-3 py-1.5 rounded-lg">
+                            Discard
+                        </button>
+                        <button onclick="resumeActiveGame()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md">
+                            Resume ▶️
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 선택된 코스 정보 표시 카드 -->
@@ -183,11 +188,6 @@
                             </div>
                         </label>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Base Double Holes (🔥 2x)</label>
-                    <div class="grid grid-cols-6 gap-1.5" id="doubleHolesGrid"></div>
                 </div>
             </div>
 
@@ -460,14 +460,12 @@
             ties: {}
         };
 
-        const DEFAULT_BASE_DOUBLES = [];
         let activeCourseData = null;
         let userCoords = null;
         let lastSearchResults = []; // 최근 검색 결과 저장용
 
         window.onload = () => {
             renderSetupPlayers();
-            renderDoubleHolesGrid();
             checkActiveGameExists();
         };
 
@@ -761,6 +759,12 @@
             }
         }
 
+        function discardActiveGame() {
+            if (!confirm("Discard the in-progress game? Its scores will be deleted.")) return;
+            localStorage.removeItem('tvpc_golf_active_game');
+            checkActiveGameExists();
+        }
+
         function resumeActiveGame() {
             const savedState = localStorage.getItem('tvpc_golf_active_game');
             if (savedState) {
@@ -848,22 +852,6 @@
             }
         }
 
-        function renderDoubleHolesGrid() {
-            const grid = document.getElementById('doubleHolesGrid');
-            grid.innerHTML = '';
-            for (let i = 1; i <= 18; i++) {
-                const checked = DEFAULT_BASE_DOUBLES.includes(i) ? 'checked' : '';
-                grid.innerHTML += `
-                        <label class="cursor-pointer">
-                            <input type="checkbox" value="${i}" ${checked} class="peer hidden double-hole-check">
-                            <div class="w-full py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-center text-[11px] font-semibold text-slate-400 peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500 peer-checked:text-emerald-400 hover:border-slate-700">
-                                ${i}
-                            </div>
-                        </label>
-                    `;
-            }
-        }
-
         function saveCurrentGameState() {
             localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
         }
@@ -877,8 +865,7 @@
                 }
             }
 
-            const checks = document.querySelectorAll('.double-hole-check:checked');
-            state.baseDoubleHoles = Array.from(checks).map(c => parseInt(c.value));
+            state.baseDoubleHoles = [];
 
             state.scores = {};
             state.ties = {};
