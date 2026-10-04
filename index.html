@@ -453,14 +453,14 @@
             handicaps: [0, 0, 0, 0],
             holeSticks: {},
             mode: "multiply",
-            baseDoubleHoles: [17, 18],
+            baseDoubleHoles: [],
             currentHole: 1,
             scratchScores: Array.from({ length: 19 }, () => [0, 0, 0, 0]),
             scores: {},
             ties: {}
         };
 
-        const DEFAULT_BASE_DOUBLES = [17, 18];
+        const DEFAULT_BASE_DOUBLES = [];
         let activeCourseData = null;
         let userCoords = null;
         let lastSearchResults = []; // 최근 검색 결과 저장용
@@ -944,6 +944,9 @@
         function renderHole() {
             const h = state.currentHole;
             const holeInfo = holeInfoFor(h);
+            if (state.players.every((_, i) => !state.scratchScores[h][i])) {
+                state.players.forEach((_, i) => state.scratchScores[h][i] = holeInfo.par);
+            }
             const mult = getHoleMultiplier(h);
 
             document.getElementById('holeDisplay').innerText = `HOLE ${h}`;
@@ -1054,8 +1057,7 @@
         function stepScore(pIdx, dir) {
             const h = state.currentHole;
             const cur = state.scratchScores[h][pIdx] || 0;
-            // First tap on + jumps straight to par.
-            const next = cur === 0 ? (dir > 0 ? holeInfoFor(h).par : 0) : Math.max(0, cur + dir);
+            const next = Math.max(1, (cur || holeInfoFor(h).par) + dir);
             updateScratchScore(pIdx, next);
             const drawn = state.holeSticks[h] && state.holeSticks[h].length > 0;
             const allEntered = state.players.every((_, i) => (state.scratchScores[h][i] || 0) > 0);
