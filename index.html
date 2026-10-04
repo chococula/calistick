@@ -7,9 +7,9 @@
 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="BirdieBuddies">
-    <meta name="theme-color" content="#020617">
+    <meta name="theme-color" content="#ffffff">
     <meta name="application-name" content="BirdieBuddies">
     <meta name="author" content="chococula">
     <link rel="manifest" href="manifest.webmanifest">
@@ -18,16 +18,37 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Instagram-style light theme: the slate scale runs white -> near-black.
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#000000', 100: '#262626', 200: '#262626', 300: '#363636', 400: '#737373',
+                            500: '#8e8e8e', 600: '#a8a8a8', 700: '#dbdbdb', 800: '#efefef', 900: '#fafafa', 950: '#ffffff'
+                        },
+                        emerald: { 300: '#47afff', 400: '#0074cc', 500: '#0095f6', 950: '#e8f4ff' },
+                        amber: { 400: '#c2410c', 500: '#f97316' },
+                        rose: { 400: '#ed4956', 500: '#ed4956' },
+                        sky: { 300: '#7c3aed' },
+                        yellow: { 400: '#c2410c' }
+                    },
+                    fontFamily: { logo: ['"Grand Hotel"', 'cursive'] }
+                }
+            }
+        };
+    </script>
     <!-- Leaflet: course map (satellite tiles from Esri, street tiles from OSM; no API key needed) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- leaflet-rotate: turns the map so each hole plays "up" the screen -->
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             touch-action: manipulation;
         }
 
@@ -38,9 +59,9 @@
         }
 
         .mode-option-input:checked + .mode-option-card {
-            border-color: #10b981 !important;
-            background-color: rgba(16, 185, 129, 0.15) !important;
-            color: #34d399 !important;
+            border-color: #0095f6 !important;
+            background-color: rgba(0, 149, 246, 0.08) !important;
+            color: #0095f6 !important;
         }
 
         @keyframes popIn {
@@ -60,8 +81,8 @@
         }
 
         .leaflet-container {
-            background: #020617;
-            font-family: 'Inter', sans-serif;
+            background: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         /* Keep map credits clear of the hole bar overlay. */
@@ -71,12 +92,12 @@
 
         #courseMap .leaflet-control-attribution {
             font-size: 9px;
-            background: rgba(2, 6, 23, 0.6);
-            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.75);
+            color: #737373;
         }
 
         #courseMap .leaflet-control-attribution a {
-            color: #94a3b8;
+            color: #737373;
         }
 
         .hole-pin {
@@ -92,7 +113,7 @@
         }
 
         .me-dot {
-            background: #38bdf8;
+            background: #0095f6;
             border: 3px solid #fff;
             border-radius: 9999px;
             box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
@@ -105,16 +126,16 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col no-select">
+<body class="bg-slate-900 text-slate-100 antialiased min-h-screen flex flex-col no-select">
 
-    <div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col bg-slate-950 shadow-2xl relative pb-6">
+    <div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col bg-slate-950 border-x border-slate-700 relative pb-6">
 
         <!-- HEADER -->
-        <header class="p-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
+        <header class="p-3 bg-white/95 backdrop-blur border-b border-slate-700 flex justify-between items-center sticky top-0 z-20">
             <div class="flex items-center space-x-2">
                 <span class="text-xl">⛳</span>
                 <div>
-                    <h1 class="font-bold text-base leading-tight text-emerald-400" id="headerGameTitle">BirdieBuddies</h1>
+                    <h1 class="font-logo text-[26px] leading-none text-slate-100" id="headerGameTitle">BirdieBuddies</h1>
                     <p class="text-[10px] text-slate-400" id="headerCourseSub">No course selected</p>
                 </div>
             </div>
@@ -168,7 +189,7 @@
                         <label class="block text-[11px] font-semibold uppercase text-slate-400">Players (2 ~ 4) & Handicaps</label>
                     </div>
                     <div id="playerInputs" class="space-y-2"></div>
-                    <button id="btnAddPlayer" onclick="addPlayerInput()" class="mt-2 w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 hover:text-white hover:border-slate-500 text-xs font-medium transition flex items-center justify-center gap-1">
+                    <button id="btnAddPlayer" onclick="addPlayerInput()" class="mt-2 w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-400 hover:text-slate-100 hover:border-slate-500 text-xs font-medium transition flex items-center justify-center gap-1">
                         <span>+</span> Add Player
                     </button>
                 </div>
@@ -257,7 +278,7 @@
                             </div>
                             <div id="targetCols" class="hidden text-[11px] font-semibold text-slate-300">
                                 🎯 <span id="distTarget" class="text-amber-400 font-black"></span><span id="distTargetM" class="hidden"></span>
-                                <span class="text-slate-500">→ green</span> <span id="distTG" class="text-white font-black"></span><span id="distTGM" class="hidden"></span>
+                                <span class="text-slate-500">→ green</span> <span id="distTG" class="text-slate-100 font-black"></span><span id="distTGM" class="hidden"></span>
                             </div>
                             <div id="mapHint" class="text-[10px] text-slate-400 truncate"></div>
                         </div>
@@ -279,7 +300,7 @@
 
                 <!-- Score entry bottom sheet -->
                 <div id="scoreSheet" class="hidden absolute inset-0 z-[1100] flex flex-col justify-end">
-                    <div class="absolute inset-0 bg-slate-950/60" onclick="closeScoreSheet()"></div>
+                    <div class="absolute inset-0 bg-black/40" onclick="closeScoreSheet()"></div>
                     <div class="relative bg-slate-900 border-t border-slate-700 rounded-t-3xl px-3 pt-2 space-y-2 max-h-[88%] overflow-y-auto animate-pop" style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);">
                         <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto"></div>
                         <div class="flex items-center justify-between">
@@ -311,15 +332,15 @@
         </div>
 
         <!-- COURSE FINDER MODAL -->
-        <div id="courseModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-center items-center">
+        <div id="courseModal" class="hidden fixed inset-0 bg-black/60 z-50 p-4 flex flex-col justify-center items-center">
             <div class="space-y-4 max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col max-h-[85vh] shadow-2xl">
 
                 <!-- 1. 헤더 (고정) -->
                 <div class="flex justify-between items-center pb-1 flex-none">
-                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
                         <span>⛳</span> Select Golf Course & Tee
                     </h2>
-                    <button onclick="closeCourseModal()" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                    <button onclick="closeCourseModal()" class="text-slate-400 hover:text-slate-100 text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
                         ✕ Close
                     </button>
                 </div>
@@ -328,13 +349,13 @@
                 <div class="flex-1 overflow-y-auto space-y-3 pr-1">
                     <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
                         <div class="flex gap-2">
-                            <input type="text" id="courseSearchInput" placeholder="Enter course name (e.g. Pebble Beach)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+                            <input type="text" id="courseSearchInput" placeholder="Enter course name (e.g. Pebble Beach)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
                             <button onclick="searchGolfCourses()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-2 rounded-xl text-xs font-bold">Search</button>
                         </div>
 
                         <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
                             <span class="text-[11px] font-semibold text-slate-400">Search Radius (Mile)</span>
-                            <select id="searchRadiusSelect" class="bg-slate-950 text-white text-xs border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500">
+                            <select id="searchRadiusSelect" class="bg-slate-950 text-slate-100 text-xs border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500">
                                 <option value="5" selected>5 Mile</option>
                                 <option value="10">10 Mile</option>
                                 <option value="15">15 Mile</option>
@@ -355,7 +376,7 @@
                         <h3 id="selectedCourseTitle" class="text-xs font-bold text-emerald-400"></h3>
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1">Select Tee Box</label>
-                            <select id="teeSelectDropdown" onchange="renderTeePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"></select>
+                            <select id="teeSelectDropdown" onchange="renderTeePreview()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"></select>
                         </div>
 
                         <div id="teePreviewBox" class="bg-slate-900 border border-slate-800 rounded-lg p-2.5 space-y-2 text-xs">
@@ -374,7 +395,7 @@
 
                 <!-- 3. 하단 Cancel 버튼 (고정) -->
                 <div class="pt-2 flex-none">
-                    <button onclick="closeCourseModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-xs">
+                    <button onclick="closeCourseModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold py-3 rounded-xl text-xs">
                         Cancel / Skip
                     </button>
                 </div>
@@ -386,10 +407,10 @@
         <div id="scoreModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-between overflow-y-auto">
             <div class="space-y-4 max-w-md mx-auto w-full pb-6">
                 <div class="flex justify-between items-center pt-2">
-                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
                         <span>📊</span> Score Sheet & Standings
                     </h2>
-                    <button onclick="toggleScoreModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                    <button onclick="toggleScoreModal(false)" class="text-slate-400 hover:text-slate-100 text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
                         ✕ Close
                     </button>
                 </div>
@@ -410,7 +431,7 @@
                             </tr>
                         </thead>
                         <tbody id="matrixTableBody" class="divide-y divide-slate-800/50"></tbody>
-                        <tfoot id="matrixTableFooter" class="border-t-2 border-slate-700 font-bold text-white"></tfoot>
+                        <tfoot id="matrixTableFooter" class="border-t-2 border-slate-700 font-bold text-slate-100"></tfoot>
                     </table>
                 </div>
 
@@ -424,10 +445,10 @@
         <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 p-4 flex flex-col justify-between overflow-y-auto">
             <div class="space-y-4 max-w-md mx-auto w-full pb-6">
                 <div class="flex justify-between items-center pt-2">
-                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
                         <span>📜</span> Match History
                     </h2>
-                    <button onclick="toggleHistoryModal(false)" class="text-slate-400 hover:text-white text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
+                    <button onclick="toggleHistoryModal(false)" class="text-slate-400 hover:text-slate-100 text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">
                         ✕ Close
                     </button>
                 </div>
@@ -438,7 +459,7 @@
                     <button onclick="clearAllHistory()" class="w-1/3 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold py-2.5 rounded-xl transition">
                         Clear All
                     </button>
-                    <button onclick="toggleHistoryModal(false)" class="w-2/3 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                    <button onclick="toggleHistoryModal(false)" class="w-2/3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold py-2.5 rounded-xl text-xs transition">
                         Close
                     </button>
                 </div>
@@ -449,7 +470,7 @@
         <section id="resultScreen" class="hidden p-4 flex-1 flex flex-col space-y-4">
             <div class="text-center space-y-1">
                 <div class="text-3xl">🏆</div>
-                <h2 class="text-xl font-black text-white" id="resultGameTitle">Final Standings</h2>
+                <h2 class="text-xl font-black text-slate-100" id="resultGameTitle">Final Standings</h2>
                 <p class="text-[11px] text-slate-400">Official Game Results</p>
             </div>
 
@@ -548,7 +569,7 @@
                 btn.className = 'w-full text-left p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs transition';
                 btn.innerHTML = `
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-white">${cName}</span>
+                            <span class="font-bold text-slate-100">${cName}</span>
                             ${distText}
                         </div>
                         <div class="text-[10px] text-slate-400">${cLoc}</div>
@@ -697,7 +718,7 @@
                 const hcpVal = hData.handicap_index ?? hData.hcp ?? hData.handicap ?? i;
 
                 trHoles += `<td class="px-1 text-center font-mono text-[10px]">${i}</td>`;
-                trPar += `<td class="px-1 text-center font-mono text-[10px] text-white">${parVal}</td>`;
+                trPar += `<td class="px-1 text-center font-mono text-[10px] text-slate-100">${parVal}</td>`;
                 trHcp += `<td class="px-1 text-center font-mono text-[10px] text-amber-400">${hcpVal}</td>`;
             }
 
@@ -834,12 +855,12 @@
                         <span class="text-[11px] font-bold text-slate-500 w-3">${index + 1}</span>
                         <div class="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
                             <input type="text" value="${escapeHtml(name)}" onfocus="this.select()" onchange="updatePlayerName(${index}, this.value)" placeholder="Enter name"
-                                class="flex-1 bg-transparent text-white text-xs focus:outline-none font-medium">
+                                class="flex-1 bg-transparent text-slate-100 text-xs focus:outline-none font-medium">
                         </div>
                         <div class="w-16 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 focus-within:border-emerald-500">
                             <span class="text-[9px] text-slate-500 font-bold mr-1">HCP</span>
                             <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${hcp}" onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updatePlayerHandicap(${index}, this.value)" placeholder="0"
-                                class="w-full bg-transparent text-white text-xs focus:outline-none font-medium text-center">
+                                class="w-full bg-transparent text-slate-100 text-xs focus:outline-none font-medium text-center">
                         </div>
                         ${state.players.length > 2 ? `
                             <button onclick="removePlayerInput(${index})" class="text-slate-500 hover:text-rose-400 px-1 py-1 text-xs">✕</button>
@@ -970,7 +991,7 @@
         function scoreColor(score, par) {
             if (!score) return 'text-slate-600';
             const d = score - par;
-            return d <= -2 ? 'text-sky-300' : d === -1 ? 'text-emerald-400' : d === 0 ? 'text-white' : d === 1 ? 'text-amber-400' : 'text-rose-400';
+            return d <= -2 ? 'text-sky-300' : d === -1 ? 'text-emerald-400' : d === 0 ? 'text-slate-100' : d === 1 ? 'text-amber-400' : 'text-rose-400';
         }
 
         // Handicap strokes received on a hole (standard allocation by HCP index).
@@ -1058,7 +1079,7 @@
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-1.5">
                                     ${getStickBadgeHTML(currentHoleSticks[pIdx])}
-                                    <span class="font-bold text-white text-sm truncate">${escapeHtml(pName)}</span>
+                                    <span class="font-bold text-slate-100 text-sm truncate">${escapeHtml(pName)}</span>
                                     ${strokes > 0 ? `<span class="text-[10px] font-extrabold text-rose-400 bg-rose-500/10 px-1 rounded shrink-0">-${strokes}</span>` : ''}
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-1">
@@ -1068,7 +1089,7 @@
                                 </div>
                             </div>
                             <button onclick="stepScore(${pIdx}, -1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">−</button>
-                            <div class="w-10 text-center text-3xl font-black ${isStroke() ? scoreColor(scratch, holeInfo.par) : (scratch ? 'text-amber-400' : 'text-slate-600')}">${scratch || '–'}</div>
+                            <div class="w-10 text-center text-3xl font-black ${isStroke() ? scoreColor(scratch, holeInfo.par) : (scratch ? 'text-slate-100' : 'text-slate-600')}">${scratch || '–'}</div>
                             <button onclick="stepScore(${pIdx}, 1)" class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 text-2xl font-bold text-slate-200 active:scale-95">+</button>
                         </div>`;
             }).join('');
@@ -1124,7 +1145,7 @@
                                 ${getStickBadgeHTML(sticks[pIdx]).replace('w-5 h-5', 'w-4 h-4').replace('text-[10px]', 'text-[9px]')}
                                 <span class="text-[11px] font-bold text-slate-300 truncate">${escapeHtml(pName)}</span>
                             </div>
-                            <div class="text-xl font-black leading-tight ${scratch ? 'text-amber-400' : 'text-slate-600'}">${scratch || '–'}</div>
+                            <div class="text-xl font-black leading-tight ${scratch ? 'text-slate-100' : 'text-slate-600'}">${scratch || '–'}</div>
                             <div class="text-[10px] font-bold ${totals[pIdx] > 0 ? 'text-emerald-400' : 'text-slate-500'}">${totals[pIdx]} pts${skin > 0 ? ` <span class="text-emerald-300">(+${skin})</span>` : ''}</div>
                         </button>`;
             }).join('');
@@ -1333,9 +1354,9 @@
             }
 
             if (!state.holeSticks[h] || state.holeSticks[h].length === 0) {
-                const RED = { color: 'red', label: 'R', bg: 'bg-rose-500', text: 'text-white' };
+                const RED = { color: 'red', label: 'R', bg: 'bg-rose-500', text: 'text-slate-950' };
                 const GREEN = { color: 'green', label: 'G', bg: 'bg-emerald-500', text: 'text-slate-950' };
-                const JOKER = { color: 'joker', label: 'J', bg: 'bg-slate-950 border border-slate-700', text: 'text-yellow-400 font-black' };
+                const JOKER = { color: 'joker', label: 'J', bg: 'bg-amber-50 border border-amber-300', text: 'text-yellow-400 font-black' };
                 // 2-3 players get a balanced pool so both teams always exist.
                 const stickPool = state.players.length === 2 ? [RED, GREEN]
                     : state.players.length === 3 ? [RED, GREEN, JOKER]
@@ -1592,7 +1613,7 @@
                         ${stats.map(st => `<td class="py-2 px-1 text-center font-mono ${cls}">${f(st)}</td>`).join('')}
                     </tr>`;
             document.getElementById('matrixTableFooter').innerHTML =
-                footRow('Strokes', st => st.strokes, 'text-white') +
+                footRow('Strokes', st => st.strokes, 'text-slate-100') +
                 footRow('To Par', st => fmtToPar(st.toPar), 'text-emerald-400') +
                 (anyHcp ? footRow('Net', st => st.net, 'text-amber-400') : '');
         }
@@ -1701,7 +1722,7 @@
                         <div class="bg-slate-900 border ${isWinner ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-800'} rounded-xl p-3 flex justify-between items-center">
                             <div class="flex items-center space-x-2.5">
                                 <span class="text-base font-black ${index === 0 ? 'text-amber-400' : 'text-slate-500'}">#${index + 1}</span>
-                                <h3 class="font-bold text-white text-sm">${escapeHtml(item.name)}</h3>
+                                <h3 class="font-bold text-slate-100 text-sm">${escapeHtml(item.name)}</h3>
                             </div>
                             <span class="${isStroke() ? 'text-base' : 'text-xl'} font-black ${isWinner ? 'text-emerald-400' : 'text-slate-300'}">
                                 ${item.display}
@@ -1769,7 +1790,7 @@
                         <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-1.5">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h3 class="font-bold text-white text-xs">${escapeHtml(item.title)}</h3>
+                                    <h3 class="font-bold text-slate-100 text-xs">${escapeHtml(item.title)}</h3>
                                     <p class="text-[10px] text-slate-500">${typeText} · ${item.date}${item.course ? ' · ' + escapeHtml(item.course) : ''}</p>
                                 </div>
                                 <button onclick="deleteHistoryItem(${item.id})" class="text-slate-600 hover:text-rose-400 text-xs px-1 py-0.5">✕</button>
@@ -2147,7 +2168,7 @@
             }
 
             if (me && targetLatLng) {
-                L.polyline([me, targetLatLng], { color: '#fbbf24', weight: 3 }).addTo(mapOverlay);
+                L.polyline([me, targetLatLng], { color: '#0095f6', weight: 3 }).addTo(mapOverlay);
             }
             if (targetLatLng && green) {
                 L.polyline([targetLatLng, green], { color: '#ffffff', weight: 2, opacity: 0.7, dashArray: '6 6' }).addTo(mapOverlay);
@@ -2161,7 +2182,7 @@
                 }).addTo(mapOverlay);
             }
             if (targetLatLng) {
-                L.circleMarker(targetLatLng, { radius: 9, color: '#fbbf24', weight: 3, fillOpacity: 0.25 }).addTo(mapOverlay);
+                L.circleMarker(targetLatLng, { radius: 9, color: '#0095f6', weight: 3, fillOpacity: 0.25 }).addTo(mapOverlay);
             }
             if (meLatLng) {
                 L.marker(meLatLng, {
