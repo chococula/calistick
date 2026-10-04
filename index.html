@@ -1088,7 +1088,7 @@
             if (leafletMap && mapHole !== h) {
                 mapHole = h;
                 targetLatLng = null;
-                centerMapForHole(false);
+                applyHoleView();
             }
             mapHole = h;
             renderMap();
@@ -1177,11 +1177,15 @@
             }
             if (!leafletMap) initLeafletMap();
             mapHole = state.currentHole;
+            osmHoles = null;
+            mapAutoCentered = false;
             setTimeout(() => {
                 leafletMap.invalidateSize();
-                centerMapForHole(true);
-                renderMap();
+                applyHoleView();
             }, 50);
+            if (state.courseLat != null && state.courseLng != null) {
+                loadOsmHoles(state.courseLat, state.courseLng);
+            }
             startGeoWatch();
         }
 
@@ -1879,10 +1883,10 @@
             geoWatchId = navigator.geolocation.watchPosition(pos => {
                 meLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
                 mapLocError = '';
-                // With no green pin and no course position, the first fix is the best place to look.
-                if (!mapAutoCentered && !loadGreens()[mapHole] && state.courseLat == null) {
+                if (!mapAutoCentered) {
                     mapAutoCentered = true;
-                    leafletMap.setView(meLatLng, 17);
+                    if (state.courseLat == null) loadOsmHoles(meLatLng.lat, meLatLng.lng);
+                    applyHoleView();
                 }
                 renderMap();
             }, err => {
@@ -1891,17 +1895,100 @@
             }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
         }
 
-        function centerMapForHole(initial) {
-            const green = loadGreens()[mapHole];
-            if (green) {
-                leafletMap.setView(green, Math.max(leafletMap.getZoom(), 17));
-            } else if (initial) {
-                if (state.courseLat != null && state.courseLng != null) {
-                    leafletMap.setView([state.courseLat, state.courseLng], 16);
-                } else if (meLatLng) {
-                    leafletMap.setView(meLatLng, 17);
-                }
+        // ---- Hole layout from OpenStreetMap (golf=hole lines run tee -> green) ----
+        const OVERPASS_ENDPOINTS = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+            'https://overpass.private.coffee/api/interpreter'
+        ];
+        let osmHoles = null; // { [hole]: { line: [[lat, lng], ...], par } }
+        let osmLoading = false;
+
+        async function overpass(query) {
+            for (const ep of OVERPASS_ENDPOINTS) {
+                try {
+                    const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent('[out:json][timeout:25];' + query) });
+                    if (res.ok) return (await res.json()).elements || [];
+                } catch (e) { /* try the next mirror */ }
             }
+            throw new Error('Overpass unavailable');
+        }
+
+        function osmCacheKey() {
+            return 'tvpc_golf_osm_' + (state.courseId || 'custom');
+        }
+
+        async function loadOsmHoles(lat, lng) {
+            if (osmLoading) return;
+            try {
+                const cached = JSON.parse(localStorage.getItem(osmCacheKey()) || 'null');
+                if (cached && L.latLng(cached.lat, cached.lng).distanceTo([lat, lng]) < 3000) {
+                    osmHoles = cached.holes;
+                    applyHoleView();
+                    return;
+                }
+            } catch (e) { /* ignore bad cache */ }
+
+            osmLoading = true;
+            renderMap();
+            try {
+                // Pick the course boundary containing the point (smallest wins), else the nearest one.
+                const courses = await overpass(`(way[leisure=golf_course](around:1500,${lat},${lng});relation[leisure=golf_course](around:1500,${lat},${lng}););out tags center bb;`);
+                const area = c => (c.bounds.maxlat - c.bounds.minlat) * (c.bounds.maxlon - c.bounds.minlon);
+                const inside = courses.filter(c => c.bounds && lat >= c.bounds.minlat && lat <= c.bounds.maxlat && lng >= c.bounds.minlon && lng <= c.bounds.maxlon)
+                    .sort((a, b) => area(a) - area(b));
+                const dist = c => c.center ? L.latLng(c.center.lat, c.center.lon).distanceTo([lat, lng]) : Infinity;
+                const pick = inside[0] || courses.sort((a, b) => dist(a) - dist(b))[0];
+
+                const holes = {};
+                if (pick) {
+                    const ways = await overpass(`${pick.type}(${pick.id});map_to_area->.c;way(area.c)[golf=hole];out tags geom;`);
+                    ways.forEach(w => {
+                        const ref = parseInt(w.tags && w.tags.ref, 10);
+                        if (!(ref >= 1 && ref <= 18) || !w.geometry || w.geometry.length < 2) return;
+                        const par = parseInt(w.tags.par, 10) || null;
+                        const line = w.geometry.map(pt => [pt.lat, pt.lon]);
+                        // 27/36-hole clubs repeat hole numbers: prefer the one matching the scorecard par.
+                        const want = holeInfoFor(ref).par;
+                        if (!holes[ref] || (holes[ref].par !== want && par === want)) holes[ref] = { line, par };
+                    });
+                }
+                osmHoles = holes;
+                localStorage.setItem(osmCacheKey(), JSON.stringify({ lat, lng, holes, name: pick ? pick.tags.name : '' }));
+            } catch (e) {
+                osmHoles = osmHoles || {};
+            }
+            osmLoading = false;
+            applyHoleView();
+        }
+
+        // User pin wins; otherwise the end of the OSM hole line.
+        function greenFor(h) {
+            const pinned = loadGreens()[h];
+            if (pinned) return L.latLng(pinned);
+            const osm = osmHoles && osmHoles[h];
+            return osm ? L.latLng(osm.line[osm.line.length - 1]) : null;
+        }
+
+        // Frame the current hole so tee and green are both on screen, clear of the overlays.
+        function applyHoleView() {
+            if (!leafletMap) return;
+            const h = mapHole;
+            const osm = osmHoles && osmHoles[h];
+            const green = greenFor(h);
+            const fit = { paddingTopLeft: [24, 90], paddingBottomRight: [64, 250], maxZoom: 18 };
+            if (osm) {
+                leafletMap.fitBounds(L.latLngBounds(green ? [...osm.line, green] : osm.line), fit);
+            } else if (green && meLatLng && meLatLng.distanceTo(green) < 700) {
+                leafletMap.fitBounds(L.latLngBounds([meLatLng, green]), fit);
+            } else if (green) {
+                leafletMap.setView(green, 18);
+            } else if (meLatLng) {
+                leafletMap.setView(meLatLng, 17);
+            } else if (state.courseLat != null && state.courseLng != null) {
+                leafletMap.setView([state.courseLat, state.courseLng], 16);
+            }
+            renderMap();
         }
 
         function showMapToast(text) {
@@ -1941,8 +2028,7 @@
         }
 
         function mapCenterGreen() {
-            const green = loadGreens()[mapHole];
-            if (green) leafletMap.setView(green, 18);
+            applyHoleView();
         }
 
         function toggleMapLayer() {
@@ -1961,18 +2047,24 @@
 
         function renderMap() {
             if (!leafletMap) return;
-            const greens = loadGreens();
-            const green = greens[mapHole] ? L.latLng(greens[mapHole]) : null;
+            const pinned = loadGreens()[mapHole];
+            const green = greenFor(mapHole);
+            const osm = osmHoles && osmHoles[mapHole];
 
             mapOverlay.clearLayers();
 
-            Object.keys(greens).forEach(key => {
-                const n = parseInt(key, 10);
-                if (n === mapHole) return;
-                L.marker(greens[key], {
-                    icon: L.divIcon({ className: 'hole-pin', html: String(n), iconSize: [24, 24] }), interactive: false
+            for (let n = 1; n <= 18; n++) {
+                const g = n === mapHole ? null : greenFor(n);
+                if (!g) continue;
+                L.marker(g, {
+                    icon: L.divIcon({ className: 'hole-pin', html: String(n), iconSize: [22, 22] }), interactive: false
                 }).addTo(mapOverlay);
-            });
+            }
+
+            if (osm) {
+                L.polyline(osm.line, { color: '#ffffff', weight: 2, opacity: 0.55, dashArray: '4 8' }).addTo(mapOverlay);
+                L.circleMarker(osm.line[0], { radius: 5, color: '#0f172a', weight: 2, fillColor: '#ffffff', fillOpacity: 1, interactive: false }).addTo(mapOverlay);
+            }
 
             if (meLatLng && targetLatLng) {
                 L.polyline([meLatLng, targetLatLng], { color: '#fbbf24', weight: 3 }).addTo(mapOverlay);
@@ -2006,6 +2098,7 @@
 
             let hint;
             if (mapToast) hint = mapToast;
+            else if (osmLoading) hint = 'Loading hole layout…';
             else if (mapLocError) hint = mapLocError;
             else if (!green) hint = `Long-press the green to pin hole ${mapHole}`;
             else if (!meLatLng) hint = 'Waiting for GPS…';
@@ -2020,7 +2113,7 @@
                 third.innerText = '📌';
                 third.title = 'Pin target as green';
                 third.className = base + 'bg-amber-500/30 border-amber-400/60';
-            } else if (green) {
+            } else if (pinned) {
                 third.innerText = '🗑';
                 third.title = 'Remove green pin';
                 third.className = base + 'bg-slate-900/90 border-slate-700/60';
