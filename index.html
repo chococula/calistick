@@ -44,6 +44,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- leaflet-rotate: turns the map so each hole plays "up" the screen -->
     <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
+    <!-- Firebase Realtime Database: shares a round live between players (see FIREBASE_CONFIG) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');
 
@@ -158,6 +161,14 @@
         <!-- SETUP SCREEN -->
         <section id="setupScreen" class="p-4 flex-1 flex flex-col justify-between space-y-4">
             <div class="space-y-4">
+                <div id="joinGameCard" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-2">
+                    <div class="text-[10px] font-semibold text-slate-400 uppercase">Join a friend's game</div>
+                    <div class="flex gap-2">
+                        <input type="text" id="joinCodeInput" maxlength="8" autocapitalize="characters" placeholder="Game code (e.g. K7QM)" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold tracking-widest uppercase text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <button onclick="joinGame(document.getElementById('joinCodeInput').value)" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold px-4 rounded-xl">Join</button>
+                    </div>
+                </div>
+
                 <div id="resumeGameCard" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex justify-between items-center">
                     <div>
                         <h3 class="text-xs font-bold text-emerald-400">In-Progress Game Found</h3>
@@ -253,6 +264,7 @@
                             <div class="flex items-center justify-center gap-1.5">
                                 <span id="holeDisplay" class="text-base font-black text-emerald-400">HOLE 1</span>
                                 <span id="multiplierBanner"></span>
+                                <span id="liveBadge" class="hidden px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-500 text-slate-950"></span>
                             </div>
                             <div id="holeSub" class="text-[11px] text-slate-300 font-semibold truncate">Par 4 · HCP 1</div>
                         </div>
@@ -263,6 +275,7 @@
                         <button onclick="toggleGameMenu(); toggleScoreModal(true)" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">📊 Leaderboard</button>
                         <button onclick="toggleGameMenu(); toggleMapLayer()" id="mapLayerBtn" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">🗺 Street map</button>
                         <button onclick="toggleGameMenu(); exitToSetup()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">⚙️ Back to setup</button>
+                        <button onclick="toggleGameMenu(); shareGame()" id="shareGameBtn" class="hidden block w-full text-left px-3 py-3 hover:bg-slate-800 border-b border-slate-800">🔗 Invite players</button>
                         <button onclick="toggleGameMenu(); confirmReset()" class="block w-full text-left px-3 py-3 hover:bg-slate-800 text-rose-400">🔄 New game</button>
                     </div>
                 </div>
@@ -505,6 +518,12 @@
             ties: {}
         };
 
+        const STICKS = {
+            R: { color: 'red', label: 'R', bg: 'bg-rose-500', text: 'text-slate-950' },
+            G: { color: 'green', label: 'G', bg: 'bg-emerald-500', text: 'text-slate-950' },
+            J: { color: 'joker', label: 'J', bg: 'bg-amber-50 border border-amber-300', text: 'text-yellow-400 font-black' }
+        };
+
         let activeCourseData = null;
         let userCoords = null;
         let lastSearchResults = []; // 최근 검색 결과 저장용
@@ -512,6 +531,12 @@
         window.onload = () => {
             renderSetupPlayers();
             checkActiveGameExists();
+            document.getElementById('joinGameCard').classList.toggle('hidden', !syncAvailable());
+            const code = new URLSearchParams(location.search).get('game');
+            if (code) {
+                history.replaceState(null, '', location.pathname);
+                joinGame(code);
+            }
         };
 
         function escapeHtml(s) {
@@ -819,21 +844,24 @@
                 if (!state.scratchScores) state.scratchScores = Array.from({ length: 19 }, () => state.players.map(() => 0));
                 if (!state.courseHoles) state.courseHoles = {};
                 if (!state.gameType) state.gameType = 'sticks';
-
-                document.getElementById('setupScreen').classList.add('hidden');
-                document.getElementById('gameScreen').classList.remove('hidden');
-                document.getElementById('btnOpenCourse').classList.add('hidden');
-                document.getElementById('btnViewScore').classList.remove('hidden');
-                
-                document.getElementById('btnReset').classList.remove('hidden');
-                document.getElementById('headerGameTitle').innerText = state.title;
-                document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
-                document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected";
-
-                history.pushState({ inGame: true }, "");
-                renderHole();
-                showGameMap();
+                enterGameScreen();
+                if (state.roomCode) connectRoom(state.roomCode);
             }
+        }
+
+        function enterGameScreen() {
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('btnOpenCourse').classList.add('hidden');
+            document.getElementById('btnViewScore').classList.remove('hidden');
+            document.getElementById('btnReset').classList.remove('hidden');
+            document.getElementById('headerGameTitle').innerText = state.title;
+            document.getElementById('headerCourseSub').innerText = state.courseName || "Custom Course";
+            document.getElementById('setupCourseText').innerText = state.courseName ? `${state.courseName}` : "No course selected";
+
+            history.pushState({ inGame: true }, "");
+            renderHole();
+            showGameMap();
         }
 
         function getStickBadgeHTML(stick) {
@@ -900,6 +928,7 @@
 
         function saveCurrentGameState() {
             localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
+            pushRoomState();
         }
 
         function isStroke() {
@@ -941,6 +970,8 @@
             }
 
             state.currentHole = 1;
+            state.roomCode = syncAvailable() ? newRoomCode() : null;
+            if (state.roomCode) connectRoom(state.roomCode, true);
 
             document.getElementById('setupScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
@@ -1354,9 +1385,7 @@
             }
 
             if (!state.holeSticks[h] || state.holeSticks[h].length === 0) {
-                const RED = { color: 'red', label: 'R', bg: 'bg-rose-500', text: 'text-slate-950' };
-                const GREEN = { color: 'green', label: 'G', bg: 'bg-emerald-500', text: 'text-slate-950' };
-                const JOKER = { color: 'joker', label: 'J', bg: 'bg-amber-50 border border-amber-300', text: 'text-yellow-400 font-black' };
+                const { R: RED, G: GREEN, J: JOKER } = STICKS;
                 // 2-3 players get a balanced pool so both teams always exist.
                 const stickPool = state.players.length === 2 ? [RED, GREEN]
                     : state.players.length === 3 ? [RED, GREEN, JOKER]
@@ -1528,6 +1557,7 @@
 
         function showSetupScreen() {
             saveCurrentGameState();
+            disconnectRoom();
             stopGeoWatch();
             closeScoreSheet();
             document.getElementById('gameScreen').classList.add('hidden');
@@ -1705,6 +1735,7 @@
 
         function showResults() {
             stopGeoWatch();
+            disconnectRoom();
             closeScoreSheet();
             document.getElementById('gameScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.remove('hidden');
@@ -1815,6 +1846,171 @@
             if (confirm("Are you sure you want to delete all match history?")) {
                 localStorage.removeItem('tvpc_golf_history');
                 renderHistoryList();
+            }
+        }
+
+
+        // ================= LIVE SHARING =================
+        // Every player who joins with the game code edits the same round. Scores are
+        // stored per player per hole, so two people typing at once don't clobber each
+        // other. Each phone keeps its own current hole.
+        //
+        // Firebase project birdiebuddies-chococula; rules (open read/write under rooms/)
+        // live in ../birdiebuddies-firebase/database.rules.json.
+        const FIREBASE_CONFIG = {
+            apiKey: 'AIzaSyAsUysaXZT8ULihIgqqZ7jQz1MePxq94u4',
+            authDomain: 'birdiebuddies-chococula.firebaseapp.com',
+            databaseURL: 'https://birdiebuddies-chococula-default-rtdb.firebaseio.com',
+            projectId: 'birdiebuddies-chococula',
+            appId: '1:376908649955:web:6c557a508c90a170293cd6'
+        };
+
+        let roomDb = null, roomRef = null, lastSynced = {}, applyingRemote = false;
+
+        function syncAvailable() {
+            return !!(FIREBASE_CONFIG && window.firebase && firebase.database);
+        }
+
+        function database() {
+            if (!roomDb && syncAvailable()) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+                roomDb = firebase.database();
+            }
+            return roomDb;
+        }
+
+        function newRoomCode() {
+            const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+            return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        }
+
+        // Shared part of the round as flat database paths -> values.
+        function flattenRoom(st) {
+            const flat = {
+                'meta/title': st.title,
+                'meta/gameType': st.gameType,
+                'meta/mode': st.mode,
+                'meta/courseName': st.courseName || '',
+                'meta/courseId': String(st.courseId || ''),
+                'meta/courseLat': st.courseLat ?? null,
+                'meta/courseLng': st.courseLng ?? null,
+                'meta/courseHoles': JSON.stringify(st.courseHoles || {}),
+                'meta/players': JSON.stringify(st.players),
+                'meta/handicaps': JSON.stringify(st.handicaps)
+            };
+            for (let h = 1; h <= 18; h++) {
+                st.players.forEach((_, p) => {
+                    flat[`holes/${h}/s/${p}`] = (st.scratchScores[h] && st.scratchScores[h][p]) || 0;
+                    flat[`holes/${h}/pts/${p}`] = (st.scores[h] && st.scores[h][p]) || 0;
+                });
+                flat[`holes/${h}/tie`] = !!st.ties[h];
+                flat[`holes/${h}/sticks`] = (st.holeSticks[h] || []).map(x => x.label).join('');
+            }
+            return flat;
+        }
+
+        function roomToState(v) {
+            const m = v.meta;
+            const players = JSON.parse(m.players);
+            const at = (obj, k) => (obj && obj[k]) || 0;
+            const next = {
+                title: m.title, gameType: m.gameType, mode: m.mode,
+                courseName: m.courseName, courseId: m.courseId,
+                courseLat: m.courseLat ?? null, courseLng: m.courseLng ?? null,
+                courseHoles: JSON.parse(m.courseHoles || '{}'),
+                players, handicaps: JSON.parse(m.handicaps),
+                baseDoubleHoles: [],
+                scratchScores: [players.map(() => 0)], scores: {}, ties: {}, holeSticks: {}
+            };
+            for (let h = 1; h <= 18; h++) {
+                const hole = (v.holes && v.holes[h]) || {};
+                next.scratchScores[h] = players.map((_, p) => at(hole.s, p));
+                next.scores[h] = {};
+                players.forEach((_, p) => next.scores[h][p] = at(hole.pts, p));
+                next.ties[h] = !!hole.tie;
+                next.holeSticks[h] = String(hole.sticks || '').split('').filter(l => STICKS[l]).map(l => STICKS[l]);
+            }
+            return next;
+        }
+
+        function pushRoomState() {
+            if (!roomRef || applyingRemote) return;
+            const flat = flattenRoom(state);
+            const patch = {};
+            for (const k in flat) {
+                if (lastSynced[k] !== flat[k]) patch[k] = flat[k];
+            }
+            lastSynced = flat;
+            if (Object.keys(patch).length) roomRef.update(patch);
+        }
+
+        function applyRemoteRoom(v) {
+            if (!v || !v.meta) return;
+            applyingRemote = true;
+            const keep = { currentHole: state.currentHole, roomCode: state.roomCode };
+            state = Object.assign(state, roomToState(v), keep);
+            lastSynced = flattenRoom(state);
+            localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
+            applyingRemote = false;
+            if (!document.getElementById('gameScreen').classList.contains('hidden')) renderHole();
+            if (!document.getElementById('scoreModal').classList.contains('hidden')) renderMatrixTable();
+        }
+
+        // `fresh`: this phone just created the round, so it writes everything first.
+        function connectRoom(code, fresh = false) {
+            if (!database()) return;
+            disconnectRoom();
+            roomRef = roomDb.ref('rooms/' + code);
+            lastSynced = fresh ? {} : flattenRoom(state);
+            if (fresh) pushRoomState();
+            roomRef.on('value', snap => applyRemoteRoom(snap.val()));
+            updateLiveBadge();
+        }
+
+        function disconnectRoom() {
+            if (roomRef) roomRef.off();
+            roomRef = null;
+            updateLiveBadge();
+        }
+
+        function updateLiveBadge() {
+            const badge = document.getElementById('liveBadge');
+            const on = !!(roomRef && state.roomCode);
+            badge.classList.toggle('hidden', !on);
+            badge.innerText = on ? `LIVE · ${state.roomCode}` : '';
+            document.getElementById('shareGameBtn').classList.toggle('hidden', !on);
+        }
+
+        async function joinGame(rawCode) {
+            const code = String(rawCode || '').trim().toUpperCase();
+            if (!code) return alert('Enter the game code.');
+            if (!database()) return alert('Live sharing is not set up on this site yet.');
+            let snap;
+            try {
+                snap = await roomDb.ref('rooms/' + code).get();
+            } catch (e) {
+                return alert('Could not reach the game server. Check your connection.');
+            }
+            if (!snap.exists() || !snap.val().meta) return alert(`No game found with code ${code}.`);
+            state = Object.assign(roomToState(snap.val()), { currentHole: 1, roomCode: code });
+            localStorage.setItem('tvpc_golf_active_game', JSON.stringify(state));
+            enterGameScreen();
+            connectRoom(code);
+        }
+
+        async function shareGame() {
+            const url = `${location.origin}${location.pathname}?game=${state.roomCode}`;
+            const text = `Join my BirdieBuddies round — code ${state.roomCode}`;
+            try {
+                if (navigator.share) return await navigator.share({ title: 'BirdieBuddies', text, url });
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                alert(`Invite link copied!\n\nCode: ${state.roomCode}\n${url}`);
+            } catch (e) {
+                prompt('Share this link:', url);
             }
         }
 
