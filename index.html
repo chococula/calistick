@@ -15,8 +15,6 @@
     <!-- Leaflet: course map (satellite tiles from Esri, street tiles from OSM; no API key needed) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- leaflet-rotate: turns the map so each hole plays "up" the screen -->
-    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 
@@ -1820,10 +1818,7 @@
         }
 
         function initLeafletMap() {
-            leafletMap = L.map('courseMap', {
-                zoomControl: false, attributionControl: false, maxZoom: 20,
-                rotate: true, bearing: 0, touchRotate: false, shiftKeyRotate: false, rotateControl: false
-            }).setView(DEFAULT_MAP_CENTER, 12);
+            leafletMap = L.map('courseMap', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView(DEFAULT_MAP_CENTER, 12);
             L.control.attribution({ position: 'topright' }).addTo(leafletMap);
             satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxNativeZoom: 18, maxZoom: 20, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
@@ -1965,63 +1960,23 @@
             return osm ? L.latLng(osm.line[osm.line.length - 1]) : null;
         }
 
-        // Compass bearing (degrees clockwise from north) from a to b.
-        function bearingBetween(a, b) {
-            const toRad = Math.PI / 180;
-            const dLng = (b.lng - a.lng) * toRad;
-            const y = Math.sin(dLng) * Math.cos(b.lat * toRad);
-            const x = Math.cos(a.lat * toRad) * Math.sin(b.lat * toRad) -
-                Math.sin(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.cos(dLng);
-            return (Math.atan2(y, x) / toRad + 360) % 360;
-        }
-
-        function setMapBearing(deg) {
-            if (leafletMap.setBearing) leafletMap.setBearing(deg);
-        }
-
-        // Rotate so `upBearing` points to the top of the screen, then fit the points into the
-        // area left between the top bar and the bottom panel (fitBounds ignores rotation).
-        function fitRotated(latlngs, upBearing) {
-            setMapBearing(-upBearing);
-            const theta = (leafletMap.getBearing ? leafletMap.getBearing() : 0) * Math.PI / 180;
-            const size = leafletMap.getSize();
-            const pad = { l: 24, r: 64, t: 90, b: 250 };
-            const availW = Math.max(60, size.x - pad.l - pad.r);
-            const availH = Math.max(60, size.y - pad.t - pad.b);
-            const boxAt = z => L.bounds(latlngs.map(ll => leafletMap.project(ll, z).rotate(theta)));
-
-            let zoom = 13;
-            for (let z = 18; z >= 13; z--) {
-                const sz = boxAt(z).getSize();
-                if (sz.x <= availW && sz.y <= availH) { zoom = z; break; }
-            }
-            // Map center such that the content lands in the middle of the free area.
-            const offset = L.point((pad.l - pad.r) / 2, (pad.t - pad.b) / 2);
-            const centerRot = boxAt(zoom).getCenter().subtract(offset);
-            leafletMap.setView(leafletMap.unproject(centerRot.rotate(-theta), zoom), zoom, { animate: false });
-        }
-
-        // Frame the current hole tee-to-green, with the direction of play pointing up.
+        // Frame the current hole so tee and green are both on screen, clear of the overlays.
         function applyHoleView() {
             if (!leafletMap) return;
             const h = mapHole;
             const osm = osmHoles && osmHoles[h];
             const green = greenFor(h);
+            const fit = { paddingTopLeft: [24, 90], paddingBottomRight: [64, 250], maxZoom: 18 };
             if (osm) {
-                const line = osm.line.map(pt => L.latLng(pt));
-                const end = green || line[line.length - 1];
-                fitRotated(green ? [...line, green] : line, bearingBetween(line[0], end));
+                leafletMap.fitBounds(L.latLngBounds(green ? [...osm.line, green] : osm.line), fit);
             } else if (green && meLatLng && meLatLng.distanceTo(green) < 700) {
-                fitRotated([meLatLng, green], bearingBetween(meLatLng, green));
-            } else {
-                setMapBearing(0);
-                if (green) {
-                    leafletMap.setView(green, 18);
-                } else if (meLatLng) {
-                    leafletMap.setView(meLatLng, 17);
-                } else if (state.courseLat != null && state.courseLng != null) {
-                    leafletMap.setView([state.courseLat, state.courseLng], 16);
-                }
+                leafletMap.fitBounds(L.latLngBounds([meLatLng, green]), fit);
+            } else if (green) {
+                leafletMap.setView(green, 18);
+            } else if (meLatLng) {
+                leafletMap.setView(meLatLng, 17);
+            } else if (state.courseLat != null && state.courseLng != null) {
+                leafletMap.setView([state.courseLat, state.courseLng], 16);
             }
             renderMap();
         }
