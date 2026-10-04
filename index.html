@@ -830,7 +830,7 @@
                         </div>
                         <div class="w-16 flex items-center bg-slate-900 border border-slate-700 rounded-xl px-2 py-1.5 focus-within:border-emerald-500">
                             <span class="text-[9px] text-slate-500 font-bold mr-1">HCP</span>
-                            <input type="number" value="${hcp}" onfocus="this.select()" onchange="updatePlayerHandicap(${index}, this.value)" placeholder="0"
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${hcp}" onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updatePlayerHandicap(${index}, this.value)" placeholder="0"
                                 class="w-full bg-transparent text-white text-xs focus:outline-none font-medium text-center">
                         </div>
                         ${state.players.length > 2 ? `
@@ -1055,7 +1055,7 @@
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-1">
                                     ${isStroke() ? '' : `<button onclick="toggleWinnerManual(${pIdx})" class="px-2 py-0.5 rounded-md text-[10px] font-bold ${isWinner ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400 border border-slate-700'}">WIN</button>
-                                    <button onclick="editSkinPoints(${pIdx})" class="text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">${isWinner ? '+' + skin + ' pts' : '0 pts'}</button>`}
+                                    <span class="flex items-center text-[11px] font-black ${isWinner ? 'text-emerald-400' : 'text-slate-600'}">+<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" value="${skin}" onfocus="this.select()" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onchange="updateManualSkinScore(${pIdx}, this.value)" class="w-7 bg-slate-800 border border-slate-700 rounded text-center mx-0.5 focus:outline-none focus:border-emerald-500">pts</span>`}
                                     <span class="text-[10px] text-slate-500">${scoreLabel(scratch, holeInfo.par)}</span>
                                 </div>
                             </div>
@@ -1152,12 +1152,6 @@
             } else {
                 renderHole();
             }
-        }
-
-        function editSkinPoints(pIdx) {
-            const val = prompt(`Skin points for ${state.players[pIdx]}`, state.scores[state.currentHole][pIdx] || 0);
-            if (val === null) return;
-            updateManualSkinScore(pIdx, val);
         }
 
         function exitToSetup() {
