@@ -15,6 +15,8 @@
     <!-- Leaflet: course map (satellite tiles from Esri, street tiles from OSM; no API key needed) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- leaflet-rotate: turns the map so each hole plays "up" the screen -->
+    <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 
@@ -1168,6 +1170,9 @@
             if (!leafletMap) initLeafletMap();
             mapHole = state.currentHole;
             osmHoles = null;
+            osmFailed = false;
+            osmRetries = 0;
+            clearTimeout(osmRetryTimer);
             mapAutoCentered = false;
             setTimeout(() => {
                 leafletMap.invalidateSize();
@@ -1818,7 +1823,10 @@
         }
 
         function initLeafletMap() {
-            leafletMap = L.map('courseMap', { zoomControl: false, attributionControl: false, maxZoom: 20 }).setView(DEFAULT_MAP_CENTER, 12);
+            leafletMap = L.map('courseMap', {
+                zoomControl: false, attributionControl: false, maxZoom: 20,
+                rotate: true, bearing: 0, touchRotate: false, shiftKeyRotate: false, rotateControl: false
+            }).setView(DEFAULT_MAP_CENTER, 12);
             L.control.attribution({ position: 'topright' }).addTo(leafletMap);
             satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxNativeZoom: 18, maxZoom: 20, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics'
@@ -1889,17 +1897,23 @@
         const OVERPASS_ENDPOINTS = [
             'https://overpass-api.de/api/interpreter',
             'https://overpass.kumi.systems/api/interpreter',
-            'https://overpass.private.coffee/api/interpreter'
+            'https://overpass.private.coffee/api/interpreter',
+            'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
         ];
         let osmHoles = null; // { [hole]: { line: [[lat, lng], ...], par } }
         let osmLoading = false;
+        let osmFailed = false, osmRetryTimer = null, osmRetries = 0;
 
         async function overpass(query) {
-            for (const ep of OVERPASS_ENDPOINTS) {
-                try {
-                    const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent('[out:json][timeout:25];' + query) });
-                    if (res.ok) return (await res.json()).elements || [];
-                } catch (e) { /* try the next mirror */ }
+            // Public Overpass servers are often busy (504/429): go through every mirror twice.
+            for (let pass = 0; pass < 2; pass++) {
+                for (const ep of OVERPASS_ENDPOINTS) {
+                    try {
+                        const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent('[out:json][timeout:25];' + query) });
+                        if (res.ok) return (await res.json()).elements || [];
+                    } catch (e) { /* try the next mirror */ }
+                }
+                await new Promise(r => setTimeout(r, 1500));
             }
             throw new Error('Overpass unavailable');
         }
@@ -1912,7 +1926,8 @@
             if (osmLoading) return;
             try {
                 const cached = JSON.parse(localStorage.getItem(osmCacheKey()) || 'null');
-                if (cached && L.latLng(cached.lat, cached.lng).distanceTo([lat, lng]) < 3000) {
+                if (cached && Object.keys(cached.holes || {}).length &&
+                    L.latLng(cached.lat, cached.lng).distanceTo([lat, lng]) < 3000) {
                     osmHoles = cached.holes;
                     applyHoleView();
                     return;
@@ -1944,9 +1959,18 @@
                     });
                 }
                 osmHoles = holes;
-                localStorage.setItem(osmCacheKey(), JSON.stringify({ lat, lng, holes, name: pick ? pick.tags.name : '' }));
+                osmFailed = false;
+                if (Object.keys(holes).length) {
+                    localStorage.setItem(osmCacheKey(), JSON.stringify({ lat, lng, holes, name: pick ? pick.tags.name : '' }));
+                }
             } catch (e) {
                 osmHoles = osmHoles || {};
+                osmFailed = true;
+                if (osmRetries < 3) {
+                    osmRetries++;
+                    clearTimeout(osmRetryTimer);
+                    osmRetryTimer = setTimeout(() => loadOsmHoles(lat, lng), 15000);
+                }
             }
             osmLoading = false;
             applyHoleView();
@@ -1960,23 +1984,79 @@
             return osm ? L.latLng(osm.line[osm.line.length - 1]) : null;
         }
 
-        // Frame the current hole so tee and green are both on screen, clear of the overlays.
+        // Compass bearing (degrees clockwise from north) from a to b.
+        function bearingBetween(a, b) {
+            const toRad = Math.PI / 180;
+            const dLng = (b.lng - a.lng) * toRad;
+            const y = Math.sin(dLng) * Math.cos(b.lat * toRad);
+            const x = Math.cos(a.lat * toRad) * Math.sin(b.lat * toRad) -
+                Math.sin(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.cos(dLng);
+            return (Math.atan2(y, x) / toRad + 360) % 360;
+        }
+
+        function setMapBearing(deg) {
+            if (leafletMap.setBearing) leafletMap.setBearing(deg);
+        }
+
+        // Rotate so `upBearing` points to the top of the screen, then fit the points into the
+        // area left between the top bar and the bottom panel (fitBounds ignores rotation).
+        function fitRotated(latlngs, upBearing) {
+            setMapBearing(-upBearing);
+            const theta = (leafletMap.getBearing ? leafletMap.getBearing() : 0) * Math.PI / 180;
+            const size = leafletMap.getSize();
+            const pad = { l: 24, r: 64, t: 90, b: 250 };
+            const availW = Math.max(60, size.x - pad.l - pad.r);
+            const availH = Math.max(60, size.y - pad.t - pad.b);
+            const boxAt = z => L.bounds(latlngs.map(ll => leafletMap.project(ll, z).rotate(theta)));
+
+            let zoom = 13;
+            for (let z = 18; z >= 13; z--) {
+                const sz = boxAt(z).getSize();
+                if (sz.x <= availW && sz.y <= availH) { zoom = z; break; }
+            }
+            // Map center such that the content lands in the middle of the free area.
+            const offset = L.point((pad.l - pad.r) / 2, (pad.t - pad.b) / 2);
+            const centerRot = boxAt(zoom).getCenter().subtract(offset);
+            leafletMap.setView(leafletMap.unproject(centerRot.rotate(-theta), zoom), zoom, { animate: false });
+        }
+
+        // Frame the current hole tee-to-green, with the direction of play pointing up.
+        function meNearCourse() {
+            if (!meLatLng) return false;
+            if (state.courseLat == null || state.courseLng == null) return true;
+            return meLatLng.distanceTo([state.courseLat, state.courseLng]) < 3000;
+        }
+
+        function framePoints(points, upBearing) {
+            try {
+                fitRotated(points, upBearing);
+            } catch (e) {
+                // Rotation unsupported on this browser: fall back to a north-up fit.
+                setMapBearing(0);
+                leafletMap.fitBounds(L.latLngBounds(points), { paddingTopLeft: [24, 90], paddingBottomRight: [64, 250], maxZoom: 18 });
+            }
+        }
+
         function applyHoleView() {
             if (!leafletMap) return;
             const h = mapHole;
             const osm = osmHoles && osmHoles[h];
             const green = greenFor(h);
-            const fit = { paddingTopLeft: [24, 90], paddingBottomRight: [64, 250], maxZoom: 18 };
             if (osm) {
-                leafletMap.fitBounds(L.latLngBounds(green ? [...osm.line, green] : osm.line), fit);
+                const line = osm.line.map(pt => L.latLng(pt));
+                const end = green || line[line.length - 1];
+                framePoints(green ? [...line, green] : line, bearingBetween(line[0], end));
             } else if (green && meLatLng && meLatLng.distanceTo(green) < 700) {
-                leafletMap.fitBounds(L.latLngBounds([meLatLng, green]), fit);
-            } else if (green) {
-                leafletMap.setView(green, 18);
-            } else if (meLatLng) {
-                leafletMap.setView(meLatLng, 17);
-            } else if (state.courseLat != null && state.courseLng != null) {
-                leafletMap.setView([state.courseLat, state.courseLng], 16);
+                framePoints([meLatLng, green], bearingBetween(meLatLng, green));
+            } else {
+                setMapBearing(0);
+                if (green) {
+                    leafletMap.setView(green, 18);
+                } else if (meNearCourse()) {
+                    leafletMap.setView(meLatLng, 17);
+                } else if (state.courseLat != null && state.courseLng != null) {
+                    leafletMap.setView([state.courseLat, state.courseLng], 16);
+                }
             }
             renderMap();
         }
@@ -2041,6 +2121,10 @@
             const green = greenFor(mapHole);
             const osm = osmHoles && osmHoles[mapHole];
 
+            // Ignore your position for distances when you're nowhere near the hole (e.g. at home).
+            const away = meLatLng && (green ? meLatLng.distanceTo(green) > 5000 : !meNearCourse());
+            const me = away ? null : meLatLng;
+
             mapOverlay.clearLayers();
 
             for (let n = 1; n <= 18; n++) {
@@ -2056,14 +2140,14 @@
                 L.circleMarker(osm.line[0], { radius: 5, color: '#0f172a', weight: 2, fillColor: '#ffffff', fillOpacity: 1, interactive: false }).addTo(mapOverlay);
             }
 
-            if (meLatLng && targetLatLng) {
-                L.polyline([meLatLng, targetLatLng], { color: '#fbbf24', weight: 3 }).addTo(mapOverlay);
+            if (me && targetLatLng) {
+                L.polyline([me, targetLatLng], { color: '#fbbf24', weight: 3 }).addTo(mapOverlay);
             }
             if (targetLatLng && green) {
                 L.polyline([targetLatLng, green], { color: '#ffffff', weight: 2, opacity: 0.7, dashArray: '6 6' }).addTo(mapOverlay);
             }
-            if (meLatLng && green && !targetLatLng) {
-                L.polyline([meLatLng, green], { color: '#ffffff', weight: 2.5 }).addTo(mapOverlay);
+            if (me && green && !targetLatLng) {
+                L.polyline([me, green], { color: '#ffffff', weight: 2.5 }).addTo(mapOverlay);
             }
             if (green) {
                 L.marker(green, {
@@ -2079,18 +2163,20 @@
                 }).addTo(mapOverlay);
             }
 
-            setDistance('distGreen', meLatLng, green);
+            setDistance('distGreen', me, green);
             document.getElementById('targetCols').classList.toggle('hidden', !targetLatLng);
             if (targetLatLng) {
-                setDistance('distTarget', meLatLng, targetLatLng);
+                setDistance('distTarget', me, targetLatLng);
                 setDistance('distTG', targetLatLng, green);
             }
 
             let hint;
             if (mapToast) hint = mapToast;
             else if (osmLoading) hint = '홀 정보 불러오는 중…';
+            else if (osmFailed && !green) hint = '홀 정보 서버 혼잡 — 다시 시도 중…';
             else if (mapLocError) hint = mapLocError;
             else if (!green) hint = `그린을 길게 눌러 ${mapHole}번 홀 그린 지정`;
+            else if (away) hint = '골프장 밖에 있어 거리 표시를 멈췄습니다';
             else if (!meLatLng) hint = 'GPS 신호 기다리는 중…';
             else hint = '탭: 거리 측정 · 길게 누르기: 그린 위치 변경';
             const hintEl = document.getElementById('mapHint');
