@@ -156,11 +156,6 @@
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-semibold uppercase text-slate-400 mb-1.5">Game Title</label>
-                    <input type="text" id="gameTitleInput" value="TVPC Golf" onfocus="this.select()" placeholder="Enter Game Title" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-medium">
-                </div>
-
-                <div>
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="block text-[11px] font-semibold uppercase text-slate-400">Players (2 ~ 4) & Handicaps</label>
                     </div>
@@ -893,7 +888,8 @@
 
         function startGame() {
             state.gameType = selectedGameType();
-            state.title = document.getElementById('gameTitleInput').value.trim() || 'TVPC Golf';
+            // Rounds are named after the course; no separate title to type.
+            state.title = state.courseName || 'Golf Round';
             const modeRadios = document.getElementsByName('gameMode');
             for (let radio of modeRadios) {
                 if (radio.checked) {
