@@ -2127,16 +2127,27 @@
         let osmLoading = false;
         let osmFailed = false, osmRetryTimer = null, osmRetries = 0;
 
+        // Ask every mirror at once and take the first good answer (public servers are
+        // often slow or down); one more round if all of them fail.
         async function overpass(query) {
-            // Public Overpass servers are often busy (504/429): go through every mirror twice.
             for (let pass = 0; pass < 2; pass++) {
-                for (const ep of OVERPASS_ENDPOINTS) {
-                    try {
-                        const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent('[out:json][timeout:25];' + query) });
-                        if (res.ok) return (await res.json()).elements || [];
-                    } catch (e) { /* try the next mirror */ }
+                const aborts = OVERPASS_ENDPOINTS.map(() => new AbortController());
+                try {
+                    const elements = await Promise.any(OVERPASS_ENDPOINTS.map(async (ep, i) => {
+                        const timer = setTimeout(() => aborts[i].abort(), 20000);
+                        try {
+                            const res = await fetch(ep, { method: 'POST', body: 'data=' + encodeURIComponent('[out:json][timeout:15];' + query), signal: aborts[i].signal });
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            return (await res.json()).elements || [];
+                        } finally {
+                            clearTimeout(timer);
+                        }
+                    }));
+                    aborts.forEach(a => a.abort()); // drop the slower requests
+                    return elements;
+                } catch (e) {
+                    if (pass === 0) await new Promise(r => setTimeout(r, 1500));
                 }
-                await new Promise(r => setTimeout(r, 1500));
             }
             throw new Error('Overpass unavailable');
         }
@@ -2145,13 +2156,16 @@
             return 'tvpc_golf_osm_' + (state.courseId || 'custom');
         }
 
+        const EMPTY_LAYOUT_TTL = 7 * 24 * 3600 * 1000; // re-check courses without mapped holes weekly
+
         async function loadOsmHoles(lat, lng) {
             if (osmLoading) return;
             try {
                 const cached = JSON.parse(localStorage.getItem(osmCacheKey()) || 'null');
-                if (cached && Object.keys(cached.holes || {}).length &&
+                const found = cached && Object.keys(cached.holes || {}).length > 0;
+                if (cached && (found || Date.now() - (cached.fetchedAt || 0) < EMPTY_LAYOUT_TTL) &&
                     L.latLng(cached.lat, cached.lng).distanceTo([lat, lng]) < 3000) {
-                    osmHoles = cached.holes;
+                    osmHoles = cached.holes || {};
                     applyHoleView();
                     return;
                 }
@@ -2160,36 +2174,44 @@
             osmLoading = true;
             renderMap();
             try {
-                // Pick the course boundary containing the point (smallest wins), else the nearest one.
-                const courses = await overpass(`(way[leisure=golf_course](around:1500,${lat},${lng});relation[leisure=golf_course](around:1500,${lat},${lng}););out tags center bb;`);
+                // One request: every course nearby, each followed by its holes.
+                const elements = await overpass(`(way[leisure=golf_course](around:1500,${lat},${lng});relation[leisure=golf_course](around:1500,${lat},${lng}););` +
+                    'foreach->.c(.c out tags center bb;.c map_to_area->.a;way(area.a)[golf=hole];out tags geom;);');
+                const courses = [];
+                elements.forEach(e => {
+                    const t = e.tags || {};
+                    if (t.leisure === 'golf_course') courses.push({ course: e, ways: [] });
+                    else if (t.golf === 'hole' && courses.length) courses[courses.length - 1].ways.push(e);
+                });
+
+                // The course boundary containing the point (smallest wins), else the nearest one;
+                // courses with holes mapped come first.
+                const withHoles = courses.filter(c => c.ways.length);
+                const pool = withHoles.length ? withHoles : courses;
                 const area = c => (c.bounds.maxlat - c.bounds.minlat) * (c.bounds.maxlon - c.bounds.minlon);
-                const inside = courses.filter(c => c.bounds && lat >= c.bounds.minlat && lat <= c.bounds.maxlat && lng >= c.bounds.minlon && lng <= c.bounds.maxlon)
-                    .sort((a, b) => area(a) - area(b));
+                const inside = pool.filter(({ course: c }) => c.bounds && lat >= c.bounds.minlat && lat <= c.bounds.maxlat && lng >= c.bounds.minlon && lng <= c.bounds.maxlon)
+                    .sort((a, b) => area(a.course) - area(b.course));
                 const dist = c => c.center ? L.latLng(c.center.lat, c.center.lon).distanceTo([lat, lng]) : Infinity;
-                const pick = inside[0] || courses.sort((a, b) => dist(a) - dist(b))[0];
+                const pick = inside[0] || pool.slice().sort((a, b) => dist(a.course) - dist(b.course))[0];
 
                 const holes = {};
-                if (pick) {
-                    const ways = await overpass(`${pick.type}(${pick.id});map_to_area->.c;way(area.c)[golf=hole];out tags geom;`);
-                    ways.forEach(w => {
-                        const ref = parseInt(w.tags && w.tags.ref, 10);
-                        if (!(ref >= 1 && ref <= 18) || !w.geometry || w.geometry.length < 2) return;
-                        const par = parseInt(w.tags.par, 10) || null;
-                        const line = w.geometry.map(pt => [pt.lat, pt.lon]);
-                        // 27/36-hole clubs repeat hole numbers: prefer the one matching the scorecard par.
-                        const want = holeInfoFor(ref).par;
-                        if (!holes[ref] || (holes[ref].par !== want && par === want)) holes[ref] = { line, par };
-                    });
-                }
+                (pick ? pick.ways : []).forEach(w => {
+                    const ref = parseInt(w.tags && w.tags.ref, 10);
+                    if (!(ref >= 1 && ref <= 18) || !w.geometry || w.geometry.length < 2) return;
+                    const par = parseInt(w.tags.par, 10) || null;
+                    const line = w.geometry.map(pt => [pt.lat, pt.lon]);
+                    // 27/36-hole clubs repeat hole numbers: prefer the one matching the scorecard par.
+                    const want = holeInfoFor(ref).par;
+                    if (!holes[ref] || (holes[ref].par !== want && par === want)) holes[ref] = { line, par };
+                });
                 osmHoles = holes;
                 osmFailed = false;
-                if (Object.keys(holes).length) {
-                    localStorage.setItem(osmCacheKey(), JSON.stringify({ lat, lng, holes, name: pick ? pick.tags.name : '' }));
-                }
+                // Saved even when empty, so courses without mapped holes don't wait every time.
+                localStorage.setItem(osmCacheKey(), JSON.stringify({ lat, lng, holes, fetchedAt: Date.now(), name: pick ? (pick.course.tags.name || '') : '' }));
             } catch (e) {
                 osmHoles = osmHoles || {};
                 osmFailed = true;
-                if (osmRetries < 3) {
+                if (osmRetries < 2) {
                     osmRetries++;
                     clearTimeout(osmRetryTimer);
                     osmRetryTimer = setTimeout(() => loadOsmHoles(lat, lng), 15000);
