@@ -2184,15 +2184,14 @@
                     else if (t.golf === 'hole' && courses.length) courses[courses.length - 1].ways.push(e);
                 });
 
-                // The course boundary containing the point (smallest wins), else the nearest one;
-                // courses with holes mapped come first.
-                const withHoles = courses.filter(c => c.ways.length);
-                const pool = withHoles.length ? withHoles : courses;
+                // The course boundary containing the point wins (smallest first), even when it has
+                // no holes mapped, so a neighbour's holes are never shown. Otherwise the nearest
+                // course that has holes.
                 const area = c => (c.bounds.maxlat - c.bounds.minlat) * (c.bounds.maxlon - c.bounds.minlon);
-                const inside = pool.filter(({ course: c }) => c.bounds && lat >= c.bounds.minlat && lat <= c.bounds.maxlat && lng >= c.bounds.minlon && lng <= c.bounds.maxlon)
+                const inside = courses.filter(({ course: c }) => c.bounds && lat >= c.bounds.minlat && lat <= c.bounds.maxlat && lng >= c.bounds.minlon && lng <= c.bounds.maxlon)
                     .sort((a, b) => area(a.course) - area(b.course));
                 const dist = c => c.center ? L.latLng(c.center.lat, c.center.lon).distanceTo([lat, lng]) : Infinity;
-                const pick = inside[0] || pool.slice().sort((a, b) => dist(a.course) - dist(b.course))[0];
+                const pick = inside[0] || courses.filter(c => c.ways.length).sort((a, b) => dist(a.course) - dist(b.course))[0];
 
                 const holes = {};
                 (pick ? pick.ways : []).forEach(w => {
