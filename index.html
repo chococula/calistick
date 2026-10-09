@@ -1240,9 +1240,11 @@
                 loadOsmHoles(state.courseLat, state.courseLng);
             }
             startGeoWatch();
+            watchSharedGreens();
         }
 
         function stopGeoWatch() {
+            stopSharedGreens();
             if (geoWatchId !== null) {
                 navigator.geolocation.clearWatch(geoWatchId);
                 geoWatchId = null;
@@ -2041,6 +2043,56 @@
             localStorage.setItem(greensKey(), JSON.stringify(greens));
         }
 
+        // Green pins are shared per course (courses/COURSE_ID/greens/HOLE = {lat, lng, t}),
+        // so one player pinning a course without OpenStreetMap holes fixes it for everyone.
+        // The Flutter app reads and writes the same place.
+        let sharedGreensRef = null;
+
+        function sharedGreensPath() {
+            const id = String(state.courseId || '');
+            return id && id !== 'custom' && database() ? 'courses/' + id.replace(/[.#$\[\]\/]/g, '_') + '/greens' : null;
+        }
+
+        function watchSharedGreens() {
+            stopSharedGreens();
+            const path = sharedGreensPath();
+            if (!path) return;
+            sharedGreensRef = roomDb.ref(path);
+            let first = true;
+            sharedGreensRef.on('value', snap => {
+                const raw = snap.val() || {};
+                const shared = {};
+                Object.keys(raw).forEach(k => {
+                    const v = raw[k], hole = parseInt(k, 10);
+                    if (v && hole >= 1 && hole <= 18 && typeof v.lat === 'number' && typeof v.lng === 'number') shared[hole] = [v.lat, v.lng];
+                });
+                // The first time a course opens, pins made only on this device (before sharing,
+                // or saved earlier) are shared. After that the server is the source of truth,
+                // so a pin someone removed doesn't come back from another phone.
+                const local = loadGreens();
+                let next = shared;
+                if (first) {
+                    first = false;
+                    Object.keys(local).forEach(h => { if (!shared[h]) shareGreen(h, local[h]); });
+                    next = Object.assign({}, local, shared);
+                }
+                const hadGreen = greenFor(mapHole);
+                saveGreens(next);
+                if (!hadGreen && greenFor(mapHole)) applyHoleView(); else renderMap();
+            }, () => {});
+        }
+
+        function stopSharedGreens() {
+            if (sharedGreensRef) sharedGreensRef.off();
+            sharedGreensRef = null;
+        }
+
+        function shareGreen(hole, latlng) {
+            const path = sharedGreensPath();
+            if (!path) return;
+            roomDb.ref(path + '/' + hole).set(latlng ? { lat: latlng[0], lng: latlng[1], t: Date.now() } : null).catch(() => {});
+        }
+
         function toYards(meters) {
             return Math.round(meters * 1.0936133);
         }
@@ -2318,8 +2370,9 @@
             const greens = loadGreens();
             greens[mapHole] = [latlng.lat, latlng.lng];
             saveGreens(greens);
+            shareGreen(mapHole, greens[mapHole]);
             targetLatLng = null;
-            showMapToast(`✅ Hole ${mapHole} green pinned`);
+            showMapToast(sharedGreensPath() ? `✅ Hole ${mapHole} green pinned for everyone` : `✅ Hole ${mapHole} green pinned`);
             renderMap();
         }
 
@@ -2333,6 +2386,7 @@
             if (confirm(`Remove the green pin for hole ${mapHole}?`)) {
                 delete greens[mapHole];
                 saveGreens(greens);
+                shareGreen(mapHole, null);
                 renderMap();
             }
         }
