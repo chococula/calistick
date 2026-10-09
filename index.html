@@ -686,6 +686,7 @@
 
                 activeCourseData = detailData.course || detailData;
                 activeCourseData.holesList = holesData.holes || activeCourseData.holes_data || [];
+                await applyCourseCard(activeCourseData);
 
                 document.getElementById('selectedCourseTitle').innerText = activeCourseData.course_name || activeCourseData.name;
                 const select = document.getElementById('teeSelectDropdown');
@@ -713,6 +714,23 @@
             } catch (e) {
                 alert("Failed to load tee and scorecard details.");
             }
+        }
+
+        // Corrected scorecard kept on our server for courses OpenGolfAPI gets wrong
+        // (courses/COURSE_ID/card = {par: [18], hcp: [18]}).
+        async function applyCourseCard(course) {
+            if (!database() || !course || !course.id) return;
+            try {
+                const key = String(course.id).replace(/[.#$\[\]\/]/g, '_');
+                const card = (await roomDb.ref('courses/' + key + '/card').get()).val();
+                if (!card || !Array.isArray(card.par) || card.par.length !== 18) return;
+                for (let i = 1; i <= 18; i++) {
+                    let h = course.holesList.find(x => (x.number || x.hole_number || x.hole) === i);
+                    if (!h) { h = { number: i }; course.holesList.push(h); }
+                    h.par = card.par[i - 1];
+                    if (Array.isArray(card.hcp) && card.hcp.length === 18) h.handicap_index = card.hcp[i - 1];
+                }
+            } catch (e) { /* keep OpenGolfAPI's card */ }
         }
 
         function restoreCourseList() {
@@ -2047,6 +2065,11 @@
         // so one player pinning a course without OpenStreetMap holes fixes it for everyone.
         // The Flutter app reads and writes the same place.
         let sharedGreensRef = null;
+        let curatedHoles = {}; // hole lines kept on our server; they win over OpenStreetMap
+
+        function layoutHole(h) {
+            return curatedHoles[h] || (osmHoles && osmHoles[h]);
+        }
 
         function sharedGreensPath() {
             const id = String(state.courseId || '');
@@ -2055,8 +2078,19 @@
 
         function watchSharedGreens() {
             stopSharedGreens();
+            curatedHoles = {};
             const path = sharedGreensPath();
             if (!path) return;
+            roomDb.ref(path.replace(/\/greens$/, '/holes')).get().then(snap => {
+                const raw = snap.val() || {};
+                const holes = {};
+                Object.keys(raw).forEach(k => {
+                    const v = raw[k], h = parseInt(k, 10);
+                    if (v && h >= 1 && h <= 18 && Array.isArray(v.line) && v.line.length >= 2) holes[h] = { line: v.line, par: v.par || null };
+                });
+                curatedHoles = holes;
+                if (Object.keys(holes).length) applyHoleView();
+            }).catch(() => {});
             sharedGreensRef = roomDb.ref(path);
             let first = true;
             sharedGreensRef.on('value', snap => {
@@ -2276,7 +2310,7 @@
         function greenFor(h) {
             const pinned = loadGreens()[h];
             if (pinned) return L.latLng(pinned);
-            const osm = osmHoles && osmHoles[h];
+            const osm = layoutHole(h);
             return osm ? L.latLng(osm.line[osm.line.length - 1]) : null;
         }
 
@@ -2336,7 +2370,7 @@
         function applyHoleView() {
             if (!leafletMap) return;
             const h = mapHole;
-            const osm = osmHoles && osmHoles[h];
+            const osm = layoutHole(h);
             const green = greenFor(h);
             if (osm) {
                 const line = osm.line.map(pt => L.latLng(pt));
@@ -2417,7 +2451,7 @@
             if (!leafletMap) return;
             const pinned = loadGreens()[mapHole];
             const green = greenFor(mapHole);
-            const osm = osmHoles && osmHoles[mapHole];
+            const osm = layoutHole(mapHole);
 
             // Ignore your position for distances when you're nowhere near the hole (e.g. at home).
             const away = meLatLng && (green ? meLatLng.distanceTo(green) > 5000 : !meNearCourse());
