@@ -1259,10 +1259,31 @@
             }
             startGeoWatch();
             watchSharedGreens();
+            keepScreenOn(true);
         }
+
+        // Keep the screen on during a round (Screen Wake Lock: iOS Safari 16.4+, Chrome).
+        // Browsers drop the lock when the page is hidden, so take it again on return.
+        let wakeLock = null, wantWakeLock = false;
+        async function keepScreenOn(on) {
+            wantWakeLock = on;
+            try {
+                if (on && !wakeLock && navigator.wakeLock && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                } else if (!on && wakeLock) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                }
+            } catch (e) { /* not supported or not allowed: the screen just times out as usual */ }
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (wantWakeLock && document.visibilityState === 'visible') keepScreenOn(true);
+        });
 
         function stopGeoWatch() {
             stopSharedGreens();
+            keepScreenOn(false);
             if (geoWatchId !== null) {
                 navigator.geolocation.clearWatch(geoWatchId);
                 geoWatchId = null;
