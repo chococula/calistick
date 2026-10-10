@@ -1070,7 +1070,8 @@
         function getStandings() {
             if (isStroke()) {
                 return state.players.map((name, i) => ({ name, ...strokeStats(i) }))
-                    .sort((a, b) => (a.net - b.net) || (a.strokes - b.strokes))
+                    // Net to par, not total strokes, so whoever has played more holes isn't pushed down.
+                    .sort((a, b) => ((a.holes === 0) - (b.holes === 0)) || ((a.net - a.strokes + a.toPar) - (b.net - b.strokes + b.toPar)) || (a.toPar - b.toPar))
                     .map(st => ({
                         ...st,
                         display: `${fmtToPar(st.toPar)} (${st.strokes})${st.hcp ? ` · net ${st.net}` : ''}`
@@ -1083,7 +1084,7 @@
 
         function standingsWinners(ranked) {
             if (!ranked.length) return [];
-            if (isStroke()) return ranked[0].holes > 0 ? ranked.filter(r => r.net === ranked[0].net).map(r => r.name) : [];
+            if (isStroke()) return ranked[0].holes > 0 ? ranked.filter(r => r.net - r.strokes + r.toPar === ranked[0].net - ranked[0].strokes + ranked[0].toPar).map(r => r.name) : [];
             return ranked.filter(r => r.points === ranked[0].points && r.points > 0).map(r => r.name);
         }
 
